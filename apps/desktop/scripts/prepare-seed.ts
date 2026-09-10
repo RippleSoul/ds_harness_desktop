@@ -162,7 +162,12 @@ async function main(): Promise<void> {
     const targetPlatform = process.env.DSH_DESKTOP_TARGET_PLATFORM ?? process.platform
     let signedMachOFiles: number | undefined
     let macOSSigning: ReturnType<typeof resolveMacOSSigningEnvironment> | undefined
-    if (targetPlatform === 'darwin') {
+    // A personal installer is intentionally distributed without an Apple
+    // Developer certificate. Its native seed must remain unsigned as well;
+    // otherwise this preparation step would require release credentials before
+    // electron-builder has a chance to apply the unsigned configuration.
+    const personalUnsignedBuild = process.env.DSH_DESKTOP_PERSONAL_UNSIGNED === '1'
+    if (targetPlatform === 'darwin' && !personalUnsignedBuild) {
       macOSSigning = resolveMacOSSigningEnvironment(process.env)
       const signing = await signMacOSSeedStore(
         STORE_ROOT,

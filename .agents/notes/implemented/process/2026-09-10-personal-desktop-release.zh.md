@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-桌面打包仅在显式设置 `DSH_DESKTOP_PERSONAL_UNSIGNED=1` 时允许个人未签名构建。该构建跳过 macOS 签名和公证，但保留标准打包 Electron、内置运行时和离线 seed 工作流。`DSH_DESKTOP_PERSONAL_UPDATE_URL` 覆盖该构建的通用更新地址。
+桌面打包仅在显式设置 `DSH_DESKTOP_PERSONAL_UNSIGNED=1` 时允许个人未签名构建。该构建会让打包的 Electron 应用及其离线 seed 跳过 macOS 签名和公证，但保留内置运行时和 seed 工作流。`DSH_DESKTOP_PERSONAL_UPDATE_URL` 覆盖该构建的通用更新地址。
 
 [Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) 在每次推送、每日或按需将 `main` rebase 到官方 `master`，以个人构建设置打包 Apple Silicon macOS，并替换 `latest` GitHub Release 资源。DMG 用于首次安装；ZIP、blockmap 和 `latest-mac.yml` 供 electron-updater 更新。
 

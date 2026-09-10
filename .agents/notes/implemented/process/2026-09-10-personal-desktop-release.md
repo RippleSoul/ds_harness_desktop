@@ -10,7 +10,7 @@ The owner needs a private-use macOS desktop build that follows upstream Harness 
 
 ## Decision
 
-The desktop package accepts `DSH_DESKTOP_PERSONAL_UNSIGNED=1` only when a build explicitly selects it. That build skips macOS signing and notarization while retaining the normal packaged Electron, bundled runtime, and offline seed workflow. `DSH_DESKTOP_PERSONAL_UPDATE_URL` overrides the generic update feed URL for that build.
+The desktop package accepts `DSH_DESKTOP_PERSONAL_UNSIGNED=1` only when a build explicitly selects it. That build skips macOS signing and notarization for the packaged Electron app and its offline seed while retaining the normal bundled runtime and seed workflow. `DSH_DESKTOP_PERSONAL_UPDATE_URL` overrides the generic update feed URL for that build.
 
 [Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) rebases `main` onto the official `master` branch on each push, daily, or on demand, packages Apple Silicon macOS with the personal build settings, and replaces the `latest` GitHub Release assets. The DMG supports first installation; the ZIP, blockmap, and `latest-mac.yml` support electron-updater.
 
