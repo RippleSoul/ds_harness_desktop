@@ -6,6 +6,6 @@ The scheduled **Personal macOS Desktop release** workflow rebases this fork's pe
 
 The packaged app checks `https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest` on startup. The feed is public and contains no credentials. The application downloads the ZIP update only after the user accepts the update prompt.
 
-Run the workflow manually after the initial push, then allow the daily schedule to keep the fork current. If an upstream change conflicts with the personal unsigned-build configuration, the rebase fails without publishing an update; resolve the conflict on `main` before re-running the workflow.
+Every push to `main`, a manual run, and the daily schedule start the workflow. If an upstream change conflicts with the personal unsigned-build configuration, the rebase fails without publishing an update; resolve the conflict on `main` before re-running the workflow.
 
 The upstream real-API E2E workflow is disabled outside the `deepseek-ai` repository because it requires DeepSeek's private external API test key and does not validate this personal desktop release.
