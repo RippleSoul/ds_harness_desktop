@@ -14,6 +14,7 @@ import {
 } from 'electron'
 import { resolveDesktopPaths } from './paths.ts'
 import { DesktopProjectManager, type DesktopProjectHooks } from './project-manager.ts'
+import { searchDesktopMcpMarket } from './mcp-market.ts'
 import { DesktopHostProcess } from './host-process.ts'
 import { DESKTOP_IPC, type DesktopUpdateState } from './ipc.ts'
 import { formatDesktopMessage, resolveDesktopLocale } from './locale.ts'
@@ -25,6 +26,10 @@ let focusPrimaryWindow = (): void => {}
 
 function errorOf(reason: unknown, fallback: string): Error {
   return reason instanceof Error ? reason : new Error(fallback)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 protocol.registerSchemesAsPrivileged([{
@@ -140,7 +145,7 @@ async function main(): Promise<void> {
   if (development === undefined) manager.recover()
   let host: DesktopHostProcess | undefined
   let mainWindow: BrowserWindow | undefined
-  let pluginWindow: BrowserWindow | undefined
+  let mcpWindow: BrowserWindow | undefined
   let shellInstallerOwnsQuit = false
   let updateState: DesktopUpdateState = { phase: 'idle' }
   const locale = resolveDesktopLocale(app.getLocale())
@@ -261,6 +266,26 @@ async function main(): Promise<void> {
     }
     return mutate(event, { type: 'plugin-update', name, version })
   })
+  ipcMain.handle(DESKTOP_IPC.mcpList, (event) => {
+    assertDesktopSender(event, ['shell'])
+    if (development !== undefined) return []
+    return manager.listMcp()
+  })
+  ipcMain.handle(DESKTOP_IPC.mcpSearch, async (event, query: unknown) => {
+    assertDesktopSender(event, ['shell'])
+    if (typeof query !== 'string') throw new Error('dsh desktop: MCP search query must be a string')
+    return searchDesktopMcpMarket(query)
+  })
+  ipcMain.handle(DESKTOP_IPC.mcpAdd, (event, request: unknown) => {
+    if (!isRecord(request) || typeof request.name !== 'string' || typeof request.url !== 'string') {
+      throw new Error('dsh desktop: MCP request must contain a name and URL')
+    }
+    return mutate(event, { type: 'mcp-add', request: { name: request.name, url: request.url } })
+  })
+  ipcMain.handle(DESKTOP_IPC.mcpRemove, (event, id: unknown) => {
+    if (typeof id !== 'string') throw new Error('dsh desktop: MCP id must be a string')
+    return mutate(event, { type: 'mcp-remove', id })
+  })
   ipcMain.handle(DESKTOP_IPC.updatesCheck, async (event) => {
     assertDesktopSender(event, ['shell'])
     return updates.check()
@@ -312,27 +337,27 @@ async function main(): Promise<void> {
     }
   }
 
-  const openPluginWindow = (): void => {
-    if (pluginWindow !== undefined && !pluginWindow.isDestroyed()) {
-      pluginWindow.focus()
+  const openMcpWindow = (): void => {
+    if (mcpWindow !== undefined && !mcpWindow.isDestroyed()) {
+      mcpWindow.focus()
       return
     }
-    pluginWindow = createWindow(managementPreload)
-    pluginWindow.setSize(900, 620)
-    pluginWindow.setTitle(messages.pluginWindowTitle)
-    pluginWindow.once('ready-to-show', () => { pluginWindow?.show() })
-    pluginWindow.once('closed', () => { pluginWindow = undefined })
-    void pluginWindow.loadURL(`${SCHEME}://shell/plugin-manager.html`)
+    mcpWindow = createWindow(managementPreload)
+    mcpWindow.setSize(980, 720)
+    mcpWindow.setTitle(messages.mcpMarketWindowTitle)
+    mcpWindow.once('ready-to-show', () => { mcpWindow?.show() })
+    mcpWindow.once('closed', () => { mcpWindow = undefined })
+    void mcpWindow.loadURL(`${SCHEME}://shell/mcp-market.html`)
   }
 
   Menu.setApplicationMenu(Menu.buildFromTemplate([{
     label: process.platform === 'darwin' ? app.name : messages.application,
     submenu: [
       {
-        label: development === undefined ? messages.pluginsMenu : messages.pluginsMenuPackagedOnly,
+        label: development === undefined ? messages.mcpMarketMenu : messages.mcpMarketMenuPackagedOnly,
         accelerator: 'CmdOrCtrl+,',
         enabled: development === undefined,
-        click: openPluginWindow,
+        click: openMcpWindow,
       },
       { label: messages.checkUpdatesMenu, click: () => { void checkAndPrompt(true) } },
       { type: 'separator' },

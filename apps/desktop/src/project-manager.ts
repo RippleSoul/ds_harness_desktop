@@ -37,6 +37,7 @@ import { extractPnpmStoreArchives, mergePnpmStore } from './seed-store.ts'
 
 /** Files the package transaction copies between active and staging projects. */
 const DESKTOP_PROJECT_FILES = [
+  'desktop-mcp.json',
   'package.json',
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
@@ -48,6 +49,24 @@ const DESKTOP_PROJECT_FILES = [
 export interface DesktopPluginRecord {
   readonly name: string
   readonly version: string
+}
+
+/** One Desktop-managed Streamable HTTP MCP connection. */
+export interface DesktopMcpRecord {
+  /** Stable local record identifier used for removal. */
+  readonly id: string
+  /** Registry server identity shown in the Marketplace. */
+  readonly name: string
+  /** Stable namespace used in model-visible MCP tool names. */
+  readonly serverName: string
+  /** HTTPS Streamable HTTP endpoint. */
+  readonly url: string
+}
+
+/** Input accepted from the Marketplace after main-process validation. */
+export interface DesktopMcpAddRequest {
+  readonly name: string
+  readonly url: string
 }
 
 /** Installed desktop project manifest slice. */
@@ -92,6 +111,8 @@ export type DesktopProjectMutation =
   | { readonly type: 'plugin-add'; readonly spec: string }
   | { readonly type: 'plugin-remove'; readonly name: string }
   | { readonly type: 'plugin-update'; readonly name: string; readonly version: string }
+  | { readonly type: 'mcp-add'; readonly request: DesktopMcpAddRequest }
+  | { readonly type: 'mcp-remove'; readonly id: string }
 
 interface DesktopSeedIntegrityRecord {
   readonly path: string
@@ -106,6 +127,8 @@ const DESKTOP_PROFILE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-
 const WORKSPACE_SETTINGS = 'nodeLinker: hoisted\nautoInstallPeers: false\nstrictDepBuilds: true\n'
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*|[a-z0-9][a-z0-9._~-]*)$/u
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+_-]*$/u
+const MCP_SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/u
+const MCP_RECORD_ID_PATTERN = /^[a-f0-9-]{36}$/u
 const MAX_PNPM_DIAGNOSTIC_BYTES = 64 * 1024
 const DESKTOP_REGISTRY = 'https://registry.npmjs.org/'
 
@@ -152,6 +175,64 @@ function assertPackageName(name: string): void {
 
 function assertVersion(version: string): void {
   if (!VERSION_PATTERN.test(version)) throw new Error(`desktop project: invalid exact version ${JSON.stringify(version)}`)
+}
+
+function mcpFile(projectDir: string): string {
+  return join(projectDir, 'desktop-mcp.json')
+}
+
+function assertMcpUrl(value: string): void {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error(`desktop MCP: invalid endpoint ${JSON.stringify(value)}`)
+  }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') {
+    throw new Error(`desktop MCP: endpoint must be an HTTPS URL without embedded credentials`)
+  }
+}
+
+function parseMcpRecords(value: unknown, path: string): readonly DesktopMcpRecord[] {
+  if (!isRecord(value) || value.schemaVersion !== 1 || !Array.isArray(value.servers)) {
+    throw new Error(`desktop MCP: invalid configuration ${path}`)
+  }
+  const servers = value.servers.map((entry): DesktopMcpRecord => {
+    if (!isRecord(entry) || typeof entry.id !== 'string' || !MCP_RECORD_ID_PATTERN.test(entry.id)
+      || typeof entry.name !== 'string' || entry.name === '' || typeof entry.serverName !== 'string'
+      || !MCP_SERVER_NAME_PATTERN.test(entry.serverName) || typeof entry.url !== 'string') {
+      throw new Error(`desktop MCP: invalid server entry in ${path}`)
+    }
+    assertMcpUrl(entry.url)
+    return { id: entry.id, name: entry.name, serverName: entry.serverName, url: entry.url }
+  })
+  if (new Set(servers.map(server => server.id)).size !== servers.length
+    || new Set(servers.map(server => server.serverName)).size !== servers.length) {
+    throw new Error(`desktop MCP: duplicate server id or namespace in ${path}`)
+  }
+  return [...servers].sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function mcpRecords(projectDir: string): readonly DesktopMcpRecord[] {
+  const path = mcpFile(projectDir)
+  if (!existsSync(path)) return []
+  return parseMcpRecords(readJson(path), path)
+}
+
+function writeMcpRecords(projectDir: string, records: readonly DesktopMcpRecord[]): void {
+  writeJson(mcpFile(projectDir), { schemaVersion: 1, servers: records })
+}
+
+function serverNameForMcp(name: string, records: readonly DesktopMcpRecord[]): string {
+  const stem = name.replace(/[^A-Za-z0-9_-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'mcp'
+  const base = stem.slice(0, 32)
+  const occupied = new Set(records.map(record => record.serverName))
+  if (!occupied.has(base)) return base
+  for (let suffix = 2; suffix <= 9999; suffix += 1) {
+    const candidate = `${base.slice(0, 32 - String(suffix).length - 1)}-${String(suffix)}`
+    if (!occupied.has(candidate)) return candidate
+  }
+  throw new Error('desktop MCP: unable to allocate a unique server namespace')
 }
 
 /**
@@ -368,6 +449,12 @@ export class DesktopProjectManager {
     return pluginRecords(this.paths.profile)
   }
 
+  /** Read every Desktop-managed MCP connection. */
+  listMcp(): readonly DesktopMcpRecord[] {
+    if (!existsSync(this.paths.profile)) return []
+    return mcpRecords(this.paths.profile)
+  }
+
   /** Read the exact dsh version installed in the active desktop project. */
   dshVersion(): string {
     if (!existsSync(this.paths.profile)) throw new Error('desktop project: active profile is not installed')
@@ -411,7 +498,9 @@ export class DesktopProjectManager {
       try {
         if (existsSync(this.paths.profile)) {
           const plugins = pluginRecords(this.paths.profile)
+          const mcp = mcpRecords(this.paths.profile)
           copyMetadata(seedDir, stagingProfile)
+          writeMcpRecords(stagingProfile, mcp)
           await this.runPnpm(stagingProfile, ['install', '--offline', '--frozen-lockfile', '--trust-lockfile'])
           if (plugins.length > 0) {
             await this.runPnpm(stagingProfile, [
@@ -500,6 +589,31 @@ export class DesktopProjectManager {
           )
         }
         return
+      case 'mcp-add': {
+        if (mutation.request.name === '' || mutation.request.name.length > 240) {
+          throw new Error('desktop MCP: registry server name is required and must be at most 240 characters')
+        }
+        assertMcpUrl(mutation.request.url)
+        const current = mcpRecords(projectDir)
+        if (current.some(record => record.name === mutation.request.name && record.url === mutation.request.url)) {
+          throw new Error(`desktop MCP: ${JSON.stringify(mutation.request.name)} is already installed`)
+        }
+        writeMcpRecords(projectDir, [...current, {
+          id: randomUUID(),
+          name: mutation.request.name,
+          serverName: serverNameForMcp(mutation.request.name, current),
+          url: mutation.request.url,
+        }].sort((left, right) => left.name.localeCompare(right.name)))
+        return
+      }
+      case 'mcp-remove': {
+        if (!MCP_RECORD_ID_PATTERN.test(mutation.id)) throw new Error('desktop MCP: invalid server id')
+        const current = mcpRecords(projectDir)
+        const remaining = current.filter(record => record.id !== mutation.id)
+        if (remaining.length === current.length) throw new Error('desktop MCP: server is not installed')
+        writeMcpRecords(projectDir, remaining)
+        return
+      }
       default:
         mutation satisfies never
     }
@@ -700,6 +814,7 @@ export function createSeedMetadata(seedDir: string, release: DesktopRelease): vo
     { mode: 0o600 },
   )
   writeJson(join(seedDir, 'desktop-release.json'), release)
+  writeMcpRecords(seedDir, [])
 }
 
 /**
@@ -722,4 +837,5 @@ export function createDevelopmentProjectMetadata(projectDir: string, release: De
   writeJson(join(projectDir, 'package.json'), manifest)
   writeFileSync(join(projectDir, 'pnpm-workspace.yaml'), workspaceFile(), { mode: 0o600 })
   writeJson(join(projectDir, 'desktop-release.json'), release)
+  writeMcpRecords(projectDir, [])
 }

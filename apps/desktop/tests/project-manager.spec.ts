@@ -193,6 +193,33 @@ describe('desktop package policy', () => {
 })
 
 describe('desktop project transactions', () => {
+  it('persists a one-click HTTPS MCP connection and removes it transactionally', async () => {
+    const root = temporaryRoot()
+    const seed = join(root, 'seed')
+    createTestSeedMetadata(seed, release())
+    writeFileSync(join(seed, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+    mkdirSync(join(seed, 'store'), { recursive: true })
+    writeFileSync(join(seed, 'store', 'seed-entry'), 'content')
+    archiveStore(seed)
+    writeIntegrity(seed)
+    const paths = resolveDesktopPaths(join(root, '.dsh'))
+    const manager = new DesktopProjectManager(paths, { node: process.execPath, pnpm: writeFakePnpm(root) })
+    await manager.applyRelease(seed, '1.0.0', hooks())
+    await manager.mutate({
+      type: 'mcp-add',
+      request: { name: 'io.github.example/server', url: 'https://mcp.example.test/' },
+    }, hooks())
+    const [server] = manager.listMcp()
+    expect(server).toMatchObject({
+      name: 'io.github.example/server',
+      serverName: 'io-github-example-server',
+      url: 'https://mcp.example.test/',
+    })
+    if (server === undefined) throw new Error('expected installed MCP server')
+    await manager.mutate({ type: 'mcp-remove', id: server.id }, hooks())
+    expect(manager.listMcp()).toEqual([])
+  })
+
   it('installs the offline seed and reconciles a mismatched private Host', async () => {
     const root = temporaryRoot()
     const seed = join(root, 'seed')

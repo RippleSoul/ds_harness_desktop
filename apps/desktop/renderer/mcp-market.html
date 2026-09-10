@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' data:">
+    <title id="page-title"></title>
+    <link rel="stylesheet" href="mcp-market.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1 id="title"></h1>
+          <p id="description"></p>
+        </div>
+        <button id="refresh" class="quiet" type="button"></button>
+      </header>
+      <form id="search-form">
+        <label id="search-label" for="search"></label>
+        <div class="search-row">
+          <input id="search" name="search" autocomplete="off" required>
+          <button id="search-button" type="submit"></button>
+        </div>
+      </form>
+      <p id="status" role="status" aria-live="polite"></p>
+      <section aria-labelledby="results-heading">
+        <h2 id="results-heading"></h2>
+        <ul id="results"></ul>
+        <p id="empty" hidden></p>
+      </section>
+      <section aria-labelledby="installed-heading">
+        <h2 id="installed-heading"></h2>
+        <ul id="installed"></ul>
+        <p id="installed-empty"></p>
+      </section>
+    </main>
+    <script src="mcp-market.js"></script>
+  </body>
+</html>

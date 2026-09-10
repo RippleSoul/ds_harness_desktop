@@ -94,6 +94,7 @@ interface PackageManifest {
 const DESKTOP_PATCH = fileURLToPath(new URL('../config/desktop.cordis.patch.yml', import.meta.url))
 const ROOT_CONFIG = '# Electron desktop composition root; package transactions own this file.\n[]\n'
 const ROOT_CONFIG_FILENAME = 'desktop.cordis.yml'
+const MCP_CONFIG_FILENAME = 'desktop-mcp.json'
 const DESKTOP_STREAM_PATH = '/.dsh/remote-stream'
 
 const DESKTOP_TRANSPORT_SCRIPT = `globalThis.__DSH_TRANSPORT__={
@@ -149,6 +150,64 @@ function isProjectPath(projectDir: string, target: string): boolean {
   return path === root || path.startsWith(root + sep)
 }
 
+interface DesktopMcpRecord {
+  readonly id: string
+  readonly name: string
+  readonly serverName: string
+  readonly url: string
+}
+
+const MCP_SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/u
+const MCP_RECORD_ID_PATTERN = /^[a-f0-9-]{36}$/u
+
+/** Read Desktop-owned HTTPS MCP connections before composing the host profile. */
+function desktopMcpPatches(projectDir: string): PatchOptions[] {
+  const path = join(projectDir, MCP_CONFIG_FILENAME)
+  if (!existsSync(path)) return []
+  let raw: unknown
+  try {
+    raw = JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    throw new Error(`dsh desktop: failed to read MCP configuration: ${String(error)}`)
+  }
+  if (!isRecord(raw) || raw.schemaVersion !== 1 || !Array.isArray(raw.servers)) {
+    throw new Error('dsh desktop: MCP configuration is invalid')
+  }
+  const servers = raw.servers.map((value): DesktopMcpRecord => {
+    if (!isRecord(value) || typeof value.id !== 'string' || !MCP_RECORD_ID_PATTERN.test(value.id)
+      || typeof value.name !== 'string' || value.name === '' || typeof value.serverName !== 'string'
+      || !MCP_SERVER_NAME_PATTERN.test(value.serverName) || typeof value.url !== 'string') {
+      throw new Error('dsh desktop: MCP configuration contains an invalid server')
+    }
+    let endpoint: URL
+    try {
+      endpoint = new URL(value.url)
+    } catch {
+      throw new Error(`dsh desktop: MCP ${JSON.stringify(value.name)} has an invalid endpoint`)
+    }
+    if (endpoint.protocol !== 'https:' || endpoint.username !== '' || endpoint.password !== '') {
+      throw new Error(`dsh desktop: MCP ${JSON.stringify(value.name)} must use an HTTPS endpoint without embedded credentials`)
+    }
+    return { id: value.id, name: value.name, serverName: value.serverName, url: endpoint.href }
+  })
+  if (new Set(servers.map(server => server.id)).size !== servers.length
+    || new Set(servers.map(server => server.serverName)).size !== servers.length) {
+    throw new Error('dsh desktop: MCP configuration contains duplicate server identities')
+  }
+  return servers.map(server => ({
+    insert: [{
+      id: `desktop-mcp-${server.id}`,
+      name: '@deepseek-ai/dsh-mcp-client',
+      config: {
+        transport: 'streamable-http',
+        serverName: server.serverName,
+        url: server.url,
+        headers: {},
+      },
+    }],
+  }))
+}
+
 function desktopPatches(projectDir: string, allowLinkedPackages: boolean): PatchOptions[] {
   const dshRoot = dirname(packageManifestPath(projectDir, '@deepseek-ai/dsh'))
   const profile = loadProfileDirectory('dsh desktop', projectDir, join(dshRoot, 'package.json'))
@@ -161,6 +220,7 @@ function desktopPatches(projectDir: string, allowLinkedPackages: boolean): Patch
     ...profile.layers.map(layer => layer.patches),
     profile.patches,
     loadOverlayPatches('dsh desktop', DESKTOP_PATCH),
+    desktopMcpPatches(projectDir),
   ]
   const rows = new Map(composeEntries(layers).flatMap(row => typeof row.id === 'string' ? [[row.id, row] as const] : []))
   const agentPresets = rows.get('agent-presets')

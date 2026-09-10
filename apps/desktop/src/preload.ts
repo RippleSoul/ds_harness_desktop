@@ -12,6 +12,12 @@ const api: DshDesktopApi = {
     remove: name => ipcRenderer.invoke(DESKTOP_IPC.pluginsRemove, name) as Promise<void>,
     update: (name, version) => ipcRenderer.invoke(DESKTOP_IPC.pluginsUpdate, name, version) as Promise<void>,
   },
+  mcp: {
+    list: () => ipcRenderer.invoke(DESKTOP_IPC.mcpList) as Promise<ReturnType<DshDesktopApi['mcp']['list']> extends Promise<infer T> ? T : never>,
+    search: query => ipcRenderer.invoke(DESKTOP_IPC.mcpSearch, query) as Promise<ReturnType<DshDesktopApi['mcp']['search']> extends Promise<infer T> ? T : never>,
+    add: request => ipcRenderer.invoke(DESKTOP_IPC.mcpAdd, request) as Promise<void>,
+    remove: id => ipcRenderer.invoke(DESKTOP_IPC.mcpRemove, id) as Promise<void>,
+  },
   updates: {
     check: () => ipcRenderer.invoke(DESKTOP_IPC.updatesCheck) as Promise<DesktopUpdateState>,
     install: () => ipcRenderer.invoke(DESKTOP_IPC.updatesInstall) as Promise<void>,

@@ -23,7 +23,7 @@ The [Electron packaging and update Agent Note](../../.agents/notes/implemented/a
 
 Electron owns the reserved profile at `$DSH_HOME/profiles/desktop`. Its manifest lists the built-in and installed plugin bundles in `dsh.profile.bundles`, while its `node_modules` contains the exact `@deepseek-ai/dsh` release, its matching private `@deepseek-ai/dsh-desktop-host`, and every desktop plugin. Keeping the Electron-only process entry and overlay in a private app package prevents Desktop implementation from becoming part of the public CLI package. The CLI cannot boot or mutate this profile. Electron always invokes its bundled Node.js and pnpm with the store at `$DSH_HOME/desktop/pnpm/store`; it never uses system pnpm or the caller's npm/pnpm configuration.
 
-The main dsh renderer receives only the desktop protocol marker. The separate plugin window receives structured list, install, remove, update, and update-check operations; neither renderer receives filesystem access, raw Electron IPC, a shell, or arbitrary pnpm arguments.
+The main dsh renderer receives only the desktop protocol marker. The separate Desktop-management renderer receives structured plugin operations plus the MCP Marketplace search, list, add, and remove operations; neither renderer receives filesystem access, raw Electron IPC, a shell, arbitrary pnpm arguments, or an arbitrary process-launch capability.
 
 Electron chooses typed English or Chinese shell copy from its application locale and falls back to English. Menus, native dialogs, and the plugin-management renderer use the same locale payload; the repository Client UI i18n gate checks these desktop sources.
 
@@ -47,7 +47,7 @@ Startup installs or reconciles the seed as one serialized transaction:
 5. Stop the active backend, boot and stop the complete staged backend as a health check, then restart the active backend before activation. This serialization prevents two desktop backends from sharing `$DSH_HOME`; installation or plugin incompatibility before activation deletes staging and leaves the active profile unchanged.
 6. Persist each next activation phase before its directory move, move the active profile to `$DSH_HOME/desktop/rollback/profile`, and move staging into `$DSH_HOME/profiles/desktop`. Recovery combines the journal with the actual profile, rollback, and staging directories, so interruption in either write-to-move gap restores or retains a complete profile.
 
-GUI plugin mutations use the same staging, health-check, activation, and rollback path after installing registry packages into the shared Desktop pnpm store.
+GUI plugin mutations use the same staging, health-check, activation, and rollback path after installing registry packages into the shared Desktop pnpm store. The MCP Marketplace searches the official MCP Registry and persists only HTTPS Streamable HTTP servers without headers, credentials, or a local runtime; those connections activate through the bundled `@deepseek-ai/dsh-mcp-client` package. Entries that need a command, container, package installation, or secret remain outside the one-click path.
 
 The process-lifetime Electron lock is the primary desktop owner. The transaction lock is depth defense: it records Electron while preparing local state, records the spawned pnpm worker while that worker can still write, and returns ownership to Electron after the worker exits. A later process cannot treat a live orphaned worker as a stale transaction.
 

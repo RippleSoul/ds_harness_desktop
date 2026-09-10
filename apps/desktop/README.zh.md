@@ -23,7 +23,7 @@
 
 Electron 拥有保留 profile `$DSH_HOME/profiles/desktop`。其 manifest（元数据清单）通过 `dsh.profile.bundles` 列出内置与已安装插件 bundle，`node_modules` 则同时包含精确版本的 `@deepseek-ai/dsh`、与之匹配的私有 `@deepseek-ai/dsh-desktop-host` 和所有桌面插件。把 Electron 专用进程入口与 overlay 放入私有应用包，可以避免 Desktop 实现成为公共 CLI 包的一部分。CLI 不能启动或修改该 profile。Electron 始终调用自身内置的 Node.js 与 pnpm，并把存储固定在 `$DSH_HOME/desktop/pnpm/store`；它绝不使用系统 pnpm 或调用方的 npm/pnpm 配置。
 
-dsh 主渲染进程只获得桌面协议标记。独立插件窗口获得结构化的列出、安装、移除、更新和更新检查操作；两个渲染进程都拿不到文件系统、原始 Electron IPC、shell 或任意 pnpm 参数。
+dsh 主渲染进程只获得桌面协议标记。独立桌面管理渲染器获得结构化插件操作，以及 MCP 市场的搜索、列出、添加和移除操作；两个渲染进程都拿不到文件系统、原始 Electron IPC、shell、任意 pnpm 参数或任意进程启动能力。
 
 Electron 根据应用 locale 选择类型化的英文或中文桌面壳文案，并以英文作为 fallback。菜单、原生对话框与插件管理渲染进程使用同一 locale 数据；仓库的 Client UI i18n gate 会检查这些桌面源文件。
 
@@ -47,7 +47,7 @@ Electron 根据应用 locale 选择类型化的英文或中文桌面壳文案，
 5. 停止活跃后端，启动并停止完整的 staging 后端执行健康检查，再在激活前重新启动活跃后端。这种串行方式避免两个桌面后端共享 `$DSH_HOME`；安装错误或插件不兼容会删除 staging，并保持活跃 profile 不变。
 6. 在每次目录移动前先持久化下一个激活阶段，把活跃 profile 移到 `$DSH_HOME/desktop/rollback/profile`，再把 staging 移到 `$DSH_HOME/profiles/desktop`。恢复过程同时检查日志与真实的 profile、rollback 和 staging 目录，因此在写入后、移动前的任一间隙中断后仍会恢复或保留一个完整 profile。
 
-GUI 插件修改会在把注册表包安装到共享 Desktop pnpm 存储后，使用相同的 staging、健康检查、激活与 rollback 路径。
+GUI 插件修改会在把注册表包安装到共享 Desktop pnpm 存储后，使用相同的 staging、健康检查、激活与 rollback 路径。MCP 市场搜索官方 MCP Registry，只持久化无需 headers、凭据或本地运行时的 HTTPS Streamable HTTP 服务器；这些连接通过内置的 `@deepseek-ai/dsh-mcp-client` 包激活。需要命令、容器、包安装或密钥的条目不进入一键路径。
 
 进程生命周期 Electron 锁是桌面端的主要 owner。事务锁用于纵深防御：准备本地状态时记录 Electron，在 pnpm worker 仍可能写入时记录该 worker，worker 退出后再把 owner 交还 Electron。后续进程不会把仍然存活的孤儿 worker 误判为陈旧事务。
 
