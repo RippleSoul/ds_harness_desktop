@@ -36,7 +36,7 @@ export function createElectronBuilderConfig(
     ? resolveMacOSSigningEnvironment(env)
     : undefined
   if (packagesMacOS && !personalUnsignedBuild) resolveMacOSNotarizationEnvironment(env)
-  const windowsSigner = packagesWindows
+  const windowsSigner = packagesWindows && !personalUnsignedBuild
     ? createWindowsTokenSigner({
         certificateFile: env.DSH_DESKTOP_WINDOWS_CER_FILE,
         signTool: env.DSH_DESKTOP_WINDOWS_SIGNTOOL,
@@ -90,7 +90,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
-      forceCodeSigning: true,
+      forceCodeSigning: !personalUnsignedBuild,
       signtoolOptions: {
         sign: windowsSigner,
         signingHashAlgorithms: ['sha256'],

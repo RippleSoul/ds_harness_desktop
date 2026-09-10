@@ -12,7 +12,7 @@ Status: implemented
 
 桌面打包仅在显式设置 `DSH_DESKTOP_PERSONAL_UNSIGNED=1` 时允许个人未签名构建。该构建会让打包的 Electron 应用及其离线 seed 跳过 macOS 签名和公证，但保留内置运行时和 seed 工作流。`DSH_DESKTOP_PERSONAL_UPDATE_URL` 覆盖该构建的通用更新地址。
 
-[Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) 在每次推送、每日或按需将 `main` rebase 到官方 `master`，以个人构建设置打包 Apple Silicon macOS，并替换 `latest` GitHub Release 资源。DMG 用于首次安装；ZIP、blockmap 和 `latest-mac.yml` 供 electron-updater 更新。
+[Personal Desktop release](../../../../.github/workflows/personal-desktop-release.yml) 在每次推送、每日或按需将 `main` rebase 到官方 `master`，以个人构建设置打包 Apple Silicon macOS 和 x64 Windows，并替换 `latest` GitHub Release 资源。DMG 用于首次 macOS 安装；EXE 用于首次 Windows 安装；ZIP、blockmap 和各平台元数据文件供 electron-updater 更新。
 
 上游 [real-API E2E workflow](../../../../.github/workflows/e2e.yml) 只在 `deepseek-ai` 仓库运行。这个公开个人仓库没有也不应拥有其私密测试密钥，并且该测试不验证桌面版发布。
 
@@ -26,7 +26,7 @@ Status: implemented
 
 ## Consequences
 
-由于个人构建未签名，macOS 可能在首次打开时显示警告。更新流公开且不包含密钥。上游冲突会停止 rebase，直到修复 `main` 前不会发布更新。该工作流只面向 Apple Silicon；Windows 和 Intel macOS 不属于此个人发布通道。
+由于个人构建未签名，macOS 可能在首次打开时显示警告，Windows 可能显示 SmartScreen 警告。更新流公开且不包含密钥。上游冲突会停止 rebase，直到修复 `main` 前不会发布更新。该工作流面向 Apple Silicon macOS 和 x64 Windows；Intel macOS 不属于此个人发布通道。
 
 ## Verification
 

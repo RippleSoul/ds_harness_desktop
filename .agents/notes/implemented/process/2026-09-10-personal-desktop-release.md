@@ -12,7 +12,7 @@ The owner needs a private-use macOS desktop build that follows upstream Harness 
 
 The desktop package accepts `DSH_DESKTOP_PERSONAL_UNSIGNED=1` only when a build explicitly selects it. That build skips macOS signing and notarization for the packaged Electron app and its offline seed while retaining the normal bundled runtime and seed workflow. `DSH_DESKTOP_PERSONAL_UPDATE_URL` overrides the generic update feed URL for that build.
 
-[Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) rebases `main` onto the official `master` branch on each push, daily, or on demand, packages Apple Silicon macOS with the personal build settings, and replaces the `latest` GitHub Release assets. The DMG supports first installation; the ZIP, blockmap, and `latest-mac.yml` support electron-updater.
+[Personal Desktop release](../../../../.github/workflows/personal-desktop-release.yml) rebases `main` onto the official `master` branch on each push, daily, or on demand, packages Apple Silicon macOS and x64 Windows with the personal build settings, and replaces the `latest` GitHub Release assets. The DMG supports first macOS installation; the EXE supports first Windows installation; the ZIP, blockmaps, and platform metadata files support electron-updater.
 
 The upstream [real-API E2E workflow](../../../../.github/workflows/e2e.yml) runs only in the `deepseek-ai` repository. Its private test key is unavailable in this public personal fork and the test does not validate the desktop release.
 
@@ -26,7 +26,7 @@ The upstream [real-API E2E workflow](../../../../.github/workflows/e2e.yml) runs
 
 ## Consequences
 
-macOS can display a first-launch warning because the personal build is unsigned. The update feed is public and contains no secrets. An upstream conflict stops the rebase and publishes no release until `main` is repaired. The workflow targets Apple Silicon only; Windows and Intel macOS remain outside this personal release channel.
+macOS can display a first-launch warning and Windows can display a SmartScreen warning because the personal builds are unsigned. The update feed is public and contains no secrets. An upstream conflict stops the rebase and publishes no release until `main` is repaired. The workflow targets Apple Silicon macOS and x64 Windows; Intel macOS remains outside this personal release channel.
 
 ## Verification
 

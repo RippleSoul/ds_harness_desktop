@@ -92,6 +92,25 @@ describe('desktop macOS release signature', () => {
     })
   })
 
+  it('permits an explicit unsigned personal Windows build without a signing certificate', async () => {
+    const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'io.github.ripplesoul.dshdesktop',
+      DSH_DESKTOP_TARGET_PLATFORM: 'win32',
+      DSH_DESKTOP_TARGET_ARCH: 'x64',
+      DSH_DESKTOP_PERSONAL_UNSIGNED: '1',
+      DSH_DESKTOP_PERSONAL_UPDATE_URL: 'https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest',
+      DOWNLOAD_TEST_ORIGIN: 'https://github.com',
+    }, 'win32', 'x64')
+    expect(config).toMatchObject({
+      win: { forceCodeSigning: false },
+      publish: [{
+        provider: 'generic',
+        url: 'https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest',
+      }],
+    })
+  })
+
   it('accepts the configured authority and team', () => {
     const expected = resolveMacOSSigningEnvironment(RELEASE_ENVIRONMENT)
     expect(() => {

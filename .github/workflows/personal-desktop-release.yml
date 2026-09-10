@@ -1,4 +1,4 @@
-name: Personal macOS Desktop release
+name: Personal Desktop release
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync-build-release:
+  sync:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +31,14 @@ jobs:
           git fetch upstream master
           git rebase upstream/master
           git push --force-with-lease origin HEAD:main
+
+  build-macos:
+    needs: sync
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-node@v4
         with:
@@ -52,7 +60,64 @@ jobs:
           DOWNLOAD_TEST_ORIGIN: https://github.com
         run: pnpm run package:desktop:mac:arm64
 
-      - name: Publish installer and updater feed
+      - name: Upload macOS release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: personal-desktop-macos
+          if-no-files-found: error
+          path: |
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.dmg
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.yml
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.blockmap
+
+  build-windows:
+    needs: sync
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build unsigned Windows desktop release
+        env:
+          DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
+          DSH_DESKTOP_PERSONAL_UNSIGNED: '1'
+          DSH_DESKTOP_PERSONAL_UPDATE_URL: https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest
+          DOWNLOAD_TEST_ORIGIN: https://github.com
+        run: pnpm run package:desktop:win:x64
+
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: personal-desktop-windows
+          if-no-files-found: error
+          path: |
+            apps/desktop/.desktop-build/targets/win-x64/artifacts/*.exe
+            apps/desktop/.desktop-build/targets/win-x64/artifacts/*.yml
+            apps/desktop/.desktop-build/targets/win-x64/artifacts/*.blockmap
+
+  publish-release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: personal-desktop-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish installers and updater feeds
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
@@ -60,8 +125,5 @@ jobs:
           prerelease: true
           make_latest: false
           files: |
-            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.dmg
-            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip
-            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.yml
-            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.blockmap
+            release-assets/*
           fail_on_unmatched_files: true

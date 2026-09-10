@@ -1,8 +1,8 @@
 # Personal Desktop Release
 
-This fork publishes an unsigned Apple Silicon macOS build for its owner. It is not a production distribution: macOS may require a one-time Finder confirmation because the app is not signed or notarized.
+This fork publishes unsigned Apple Silicon macOS and x64 Windows builds for its owner. They are not production distributions: macOS may require a one-time Finder confirmation, and Windows may show a SmartScreen warning, because the apps are not signed or notarized.
 
-The scheduled **Personal macOS Desktop release** workflow rebases this fork's personal desktop configuration onto `deepseek-ai/deepseek-harness` `master`, then packages the desktop application. It uploads the DMG for first installation and the ZIP, blockmap, and `latest-mac.yml` update feed to the `latest` GitHub Release.
+The scheduled **Personal Desktop release** workflow rebases this fork's personal desktop configuration onto `deepseek-ai/deepseek-harness` `master`, then packages both desktop applications in GitHub-hosted macOS and Windows runners. It uploads the DMG for macOS first installation, the Windows EXE installer, and the ZIP, blockmap, and platform update feeds to the `latest` GitHub Release.
 
 The packaged app checks `https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest` on startup. The feed is public and contains no credentials. The application downloads the ZIP update only after the user accepts the update prompt.
 
