@@ -1,6 +1,6 @@
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -140,6 +140,10 @@ async function main(): Promise<void> {
   const paths = resolveDesktopPaths()
   const development = developmentProject()
   const activeProject = development ?? paths.profile
+  const defaultWorkspace = development === undefined
+    ? join(app.getPath('documents'), 'DeepSeek Harness')
+    : undefined
+  if (defaultWorkspace !== undefined) await mkdir(defaultWorkspace, { recursive: true, mode: 0o700 })
   const hostInspectPort = developmentHostInspectPort(development !== undefined)
   const manager = new DesktopProjectManager(paths, resources)
   if (development === undefined) manager.recover()
@@ -162,7 +166,7 @@ async function main(): Promise<void> {
   }
 
   const startHost = async (projectDir = activeProject): Promise<DesktopHostProcess> => {
-    const next = new DesktopHostProcess(resources.node, projectDir, hostInspectPort)
+    const next = new DesktopHostProcess(resources.node, projectDir, hostInspectPort, defaultWorkspace)
     await next.start()
     return next
   }

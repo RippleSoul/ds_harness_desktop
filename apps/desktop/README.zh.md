@@ -23,6 +23,8 @@
 
 Electron 拥有保留 profile `$DSH_HOME/profiles/desktop`。其 manifest（元数据清单）通过 `dsh.profile.bundles` 列出内置与已安装插件 bundle，`node_modules` 则同时包含精确版本的 `@deepseek-ai/dsh`、与之匹配的私有 `@deepseek-ai/dsh-desktop-host` 和所有桌面插件。把 Electron 专用进程入口与 overlay 放入私有应用包，可以避免 Desktop 实现成为公共 CLI 包的一部分。CLI 不能启动或修改该 profile。Electron 始终调用自身内置的 Node.js 与 pnpm，并把存储固定在 `$DSH_HOME/desktop/pnpm/store`；它绝不使用系统 pnpm 或调用方的 npm/pnpm 配置。
 
+首次启动且尚无工作区记录时，Desktop 会在 Electron 所在平台的“文档”目录下创建并注册 `DeepSeek Harness`：macOS 为 `~/Documents/DeepSeek Harness`，Windows 为 `%USERPROFILE%\Documents\DeepSeek Harness`。已有任一工作区时不会创建它，也绝不扫描或接管其他文件夹。
+
 dsh 主渲染进程只获得桌面协议标记。独立桌面管理渲染器获得结构化插件操作，以及 MCP 市场的搜索、列出、添加和移除操作；两个渲染进程都拿不到文件系统、原始 Electron IPC、shell、任意 pnpm 参数或任意进程启动能力。
 
 Electron 根据应用 locale 选择类型化的英文或中文桌面壳文案，并以英文作为 fallback。菜单、原生对话框与插件管理渲染进程使用同一 locale 数据；仓库的 Client UI i18n gate 会检查这些桌面源文件。

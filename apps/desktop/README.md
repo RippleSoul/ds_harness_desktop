@@ -23,6 +23,8 @@ The [Electron packaging and update Agent Note](../../.agents/notes/implemented/a
 
 Electron owns the reserved profile at `$DSH_HOME/profiles/desktop`. Its manifest lists the built-in and installed plugin bundles in `dsh.profile.bundles`, while its `node_modules` contains the exact `@deepseek-ai/dsh` release, its matching private `@deepseek-ai/dsh-desktop-host`, and every desktop plugin. Keeping the Electron-only process entry and overlay in a private app package prevents Desktop implementation from becoming part of the public CLI package. The CLI cannot boot or mutate this profile. Electron always invokes its bundled Node.js and pnpm with the store at `$DSH_HOME/desktop/pnpm/store`; it never uses system pnpm or the caller's npm/pnpm configuration.
 
+On its first launch with no existing workspace records, Desktop creates and registers `DeepSeek Harness` below Electron's platform Documents location: `~/Documents/DeepSeek Harness` on macOS and `%USERPROFILE%\Documents\DeepSeek Harness` on Windows. It does not create this workspace when the account already has a workspace, and it never scans or adopts other folders.
+
 The main dsh renderer receives only the desktop protocol marker. The separate Desktop-management renderer receives structured plugin operations plus the MCP Marketplace search, list, add, and remove operations; neither renderer receives filesystem access, raw Electron IPC, a shell, arbitrary pnpm arguments, or an arbitrary process-launch capability.
 
 Electron chooses typed English or Chinese shell copy from its application locale and falls back to English. Menus, native dialogs, and the plugin-management renderer use the same locale payload; the repository Client UI i18n gate checks these desktop sources.

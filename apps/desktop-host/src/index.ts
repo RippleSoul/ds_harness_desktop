@@ -24,6 +24,7 @@ import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import type {} from '@deepseek-ai/dsh-api-gateway'
 import type { ConnectionFetchHandler } from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-client-modules'
+import type { WorkspaceRegistry } from '@deepseek-ai/dsh-workspace'
 import { renderIndexInjections, type IndexInjection } from '@deepseek-ai/dsh-host-webserver'
 import {
   DESKTOP_HOST_PROTOCOL_VERSION,
@@ -96,6 +97,7 @@ const ROOT_CONFIG = '# Electron desktop composition root; package transactions o
 const ROOT_CONFIG_FILENAME = 'desktop.cordis.yml'
 const MCP_CONFIG_FILENAME = 'desktop-mcp.json'
 const DESKTOP_STREAM_PATH = '/.dsh/remote-stream'
+const DEFAULT_WORKSPACE_ENV = 'DSH_DEFAULT_WORKSPACE'
 
 const DESKTOP_TRANSPORT_SCRIPT = `globalThis.__DSH_TRANSPORT__={
   ownsHost:true,
@@ -206,6 +208,16 @@ function desktopMcpPatches(projectDir: string): PatchOptions[] {
       },
     }],
   }))
+}
+
+/** Register the Desktop-owned default directory only for a new workspace registry. */
+async function ensureDefaultWorkspace(ctx: Context): Promise<void> {
+  const path = process.env[DEFAULT_WORKSPACE_ENV]
+  if (path === undefined || path === '') return
+  const registry = ctx.get('workspaceRegistry') as WorkspaceRegistry | undefined
+  if (registry === undefined) throw new Error('dsh desktop: composition did not provide workspaceRegistry')
+  if (registry.list().length !== 0) return
+  await registry.create(path, 'DeepSeek Harness')
 }
 
 function desktopPatches(projectDir: string, allowLinkedPackages: boolean): PatchOptions[] {
@@ -355,6 +367,7 @@ export async function runDesktopHost(
     provideCmdline(hostCtx, { args: [], exit: () => {} })
   })
   current = ctx
+  await ensureDefaultWorkspace(ctx)
   const connection = ctx.get('connection')
   const clientModules = ctx.get('clientModules')
   const gateway = ctx.get('typertGateway')
