@@ -14,6 +14,20 @@ DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来
 
 运行本项目前，请阅读[安全说明](SAFETY.zh.md)。
 
+## 个人桌面版下载
+
+个人 macOS 与 Windows 桌面安装包位于 [Latest 发行页](https://github.com/RippleSoul/ds_harness_desktop/releases/tag/latest)。
+
+### macOS 提示应用已损坏
+
+先将 `DeepSeek Harness.app` 移到“应用程序”，若 macOS 提示应用已损坏或无法打开，再在终端运行以下命令：
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/DeepSeek Harness.app"
+```
+
+该命令只移除这个应用的下载隔离标记；执行前请确认安装包来自可信的发行页。
+
 <a id="run"></a>
 
 ## 运行

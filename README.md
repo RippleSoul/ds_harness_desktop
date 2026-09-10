@@ -14,6 +14,20 @@ DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL B
 
 Review the [safety notice](SAFETY.md) before running the project.
 
+## Personal Desktop downloads
+
+The personal macOS and Windows desktop installers are available from the [Latest release](https://github.com/RippleSoul/ds_harness_desktop/releases/tag/latest).
+
+### macOS reports that the app is damaged
+
+Move `DeepSeek Harness.app` to Applications, then run the following command in Terminal if macOS reports that the app is damaged or cannot be opened:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/DeepSeek Harness.app"
+```
+
+This removes only the download-quarantine flag from that application; inspect the release source before doing so.
+
 ## Run
 
 ### Run from `npm`
