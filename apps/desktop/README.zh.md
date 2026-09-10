@@ -25,7 +25,7 @@ Electron 拥有保留 profile `$DSH_HOME/profiles/desktop`。其 manifest（元�
 
 首次启动且尚无工作区记录时，Desktop 会在 Electron 所在平台的“文档”目录下创建并注册 `DeepSeek Harness`：macOS 为 `~/Documents/DeepSeek Harness`，Windows 为 `%USERPROFILE%\Documents\DeepSeek Harness`。已有任一工作区时不会创建它，也绝不扫描或接管其他文件夹。
 
-dsh 主渲染进程只获得桌面协议标记。独立桌面管理渲染器获得结构化插件操作，以及 MCP 市场的搜索、列出、添加和移除操作；两个渲染进程都拿不到文件系统、原始 Electron IPC、shell、任意 pnpm 参数或任意进程启动能力。
+dsh 主渲染进程获得一个受限的桌面桥接，用于 MCP 市场的搜索、列出、添加和移除，以及账户摘要读取。这些操作驱动产品内的设置页面；独立桌面管理渲染器仍保留它自己的结构化包和更新操作。两个渲染进程都拿不到文件系统、原始 Electron IPC、shell、任意 pnpm 参数或任意进程启动能力。
 
 Desktop 还会在基础层和 Web 层之后组合已发布的实验性 Agent Teams 层。会话可通过现有委派工具创建有名称的团队；会话顶部的团队面板会显示可恢复的成员名单、成员状态、共享任务板和成员会话。成员共用所选工作区，因此任务写入范围只用于提示冲突，最终审查仍由主 Agent 负责。
 
@@ -51,7 +51,7 @@ Electron 根据应用 locale 选择类型化的英文或中文桌面壳文案，
 5. 停止活跃后端，启动并停止完整的 staging 后端执行健康检查，再在激活前重新启动活跃后端。这种串行方式避免两个桌面后端共享 `$DSH_HOME`；安装错误或插件不兼容会删除 staging，并保持活跃 profile 不变。
 6. 在每次目录移动前先持久化下一个激活阶段，把活跃 profile 移到 `$DSH_HOME/desktop/rollback/profile`，再把 staging 移到 `$DSH_HOME/profiles/desktop`。恢复过程同时检查日志与真实的 profile、rollback 和 staging 目录，因此在写入后、移动前的任一间隙中断后仍会恢复或保留一个完整 profile。
 
-GUI 插件修改会在把注册表包安装到共享 Desktop pnpm 存储后，使用相同的 staging、健康检查、激活与 rollback 路径。MCP 市场搜索官方 MCP Registry，只持久化无需 headers、凭据或本地运行时的 HTTPS Streamable HTTP 服务器；这些连接通过内置的 `@deepseek-ai/dsh-mcp-client` 包激活。需要命令、容器、包安装或密钥的条目不进入一键路径。
+GUI 插件修改会在把注册表包安装到共享 Desktop pnpm 存储后，使用相同的 staging、健康检查、激活与 rollback 路径。MCP 市场位于产品内的设置面板，搜索官方 MCP Registry，只持久化无需 headers、凭据或本地运行时的 HTTPS Streamable HTTP 服务器；这些连接通过内置的 `@deepseek-ai/dsh-mcp-client` 包激活。需要命令、容器、包安装或密钥的条目不进入一键路径。同一设置导航还包含账户余额与本地 Token 总量，以及简洁的电脑控制状态页；macOS 和 Windows 使用相同布局。
 
 进程生命周期 Electron 锁是桌面端的主要 owner。事务锁用于纵深防御：准备本地状态时记录 Electron，在 pnpm worker 仍可能写入时记录该 worker，worker 退出后再把 owner 交还 Electron。后续进程不会把仍然存活的孤儿 worker 误判为陈旧事务。
 

@@ -150,14 +150,11 @@ async function main(): Promise<void> {
   if (development === undefined) manager.recover()
   let host: DesktopHostProcess | undefined
   let mainWindow: BrowserWindow | undefined
-  let mcpWindow: BrowserWindow | undefined
-  let accountWindow: BrowserWindow | undefined
   let shellInstallerOwnsQuit = false
   let updateState: DesktopUpdateState = { phase: 'idle' }
   const locale = resolveDesktopLocale(app.getLocale())
   const messages = locale.messages
   const appPreload = fileURLToPath(new URL('./preload-app.cjs', import.meta.url))
-  const managementPreload = fileURLToPath(new URL('./preload.cjs', import.meta.url))
 
   const publishUpdate = (state: DesktopUpdateState): DesktopUpdateState => {
     updateState = state
@@ -241,8 +238,12 @@ async function main(): Promise<void> {
     return active.fetch(request)
   })
 
-  const mutate = async (event: IpcMainInvokeEvent, mutation: Parameters<DesktopProjectManager['mutate']>[0]): Promise<void> => {
-    assertDesktopSender(event, ['shell'])
+  const mutate = async (
+    event: IpcMainInvokeEvent,
+    mutation: Parameters<DesktopProjectManager['mutate']>[0],
+    hosts: readonly string[] = ['shell'],
+  ): Promise<void> => {
+    assertDesktopSender(event, hosts)
     if (development !== undefined) {
       throw new Error('dsh desktop: plugin package changes require a packaged application')
     }
@@ -273,12 +274,12 @@ async function main(): Promise<void> {
     return mutate(event, { type: 'plugin-update', name, version })
   })
   ipcMain.handle(DESKTOP_IPC.mcpList, (event) => {
-    assertDesktopSender(event, ['shell'])
+    assertDesktopSender(event, ['shell', 'app'])
     if (development !== undefined) return []
     return manager.listMcp()
   })
   ipcMain.handle(DESKTOP_IPC.mcpSearch, async (event, query: unknown) => {
-    assertDesktopSender(event, ['shell'])
+    assertDesktopSender(event, ['shell', 'app'])
     if (typeof query !== 'string') throw new Error('dsh desktop: MCP search query must be a string')
     return searchDesktopMcpMarket(query)
   })
@@ -286,14 +287,14 @@ async function main(): Promise<void> {
     if (!isRecord(request) || typeof request.name !== 'string' || typeof request.url !== 'string') {
       throw new Error('dsh desktop: MCP request must contain a name and URL')
     }
-    return mutate(event, { type: 'mcp-add', request: { name: request.name, url: request.url } })
+    return mutate(event, { type: 'mcp-add', request: { name: request.name, url: request.url } }, ['shell', 'app'])
   })
   ipcMain.handle(DESKTOP_IPC.mcpRemove, (event, id: unknown) => {
     if (typeof id !== 'string') throw new Error('dsh desktop: MCP id must be a string')
-    return mutate(event, { type: 'mcp-remove', id })
+    return mutate(event, { type: 'mcp-remove', id }, ['shell', 'app'])
   })
   ipcMain.handle(DESKTOP_IPC.accountSummary, async (event) => {
-    assertDesktopSender(event, ['shell'])
+    assertDesktopSender(event, ['shell', 'app'])
     const active = host
     if (active === undefined) throw new Error('dsh desktop: backend is unavailable')
     const response = await active.fetch(new Request(`${SCHEME}://app${ACCOUNT_SUMMARY_PATH}`))
@@ -355,42 +356,9 @@ async function main(): Promise<void> {
     }
   }
 
-  const openMcpWindow = (): void => {
-    if (mcpWindow !== undefined && !mcpWindow.isDestroyed()) {
-      mcpWindow.focus()
-      return
-    }
-    mcpWindow = createWindow(managementPreload)
-    mcpWindow.setSize(980, 720)
-    mcpWindow.setTitle(messages.mcpMarketWindowTitle)
-    mcpWindow.once('ready-to-show', () => { mcpWindow?.show() })
-    mcpWindow.once('closed', () => { mcpWindow = undefined })
-    void mcpWindow.loadURL(`${SCHEME}://shell/mcp-market.html`)
-  }
-
-  const openAccountWindow = (): void => {
-    if (accountWindow !== undefined && !accountWindow.isDestroyed()) {
-      accountWindow.focus()
-      return
-    }
-    accountWindow = createWindow(managementPreload)
-    accountWindow.setSize(720, 600)
-    accountWindow.setTitle(messages.accountWindowTitle)
-    accountWindow.once('ready-to-show', () => { accountWindow?.show() })
-    accountWindow.once('closed', () => { accountWindow = undefined })
-    void accountWindow.loadURL(`${SCHEME}://shell/account.html`)
-  }
-
   Menu.setApplicationMenu(Menu.buildFromTemplate([{
     label: process.platform === 'darwin' ? app.name : messages.application,
     submenu: [
-      { label: messages.accountMenu, click: openAccountWindow },
-      {
-        label: development === undefined ? messages.mcpMarketMenu : messages.mcpMarketMenuPackagedOnly,
-        accelerator: 'CmdOrCtrl+,',
-        enabled: development === undefined,
-        click: openMcpWindow,
-      },
       { label: messages.checkUpdatesMenu, click: () => { void checkAndPrompt(true) } },
       { type: 'separator' },
       { role: 'quit' },

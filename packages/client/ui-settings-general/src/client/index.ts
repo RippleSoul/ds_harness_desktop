@@ -29,6 +29,11 @@ import { GeneralSection } from './GeneralSection.tsx'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
 import { SettingsDocumentStore } from './settings-document-store.ts'
+import {
+  DesktopAccountSection, DesktopComputerControlSection, DesktopMcpMarketplaceSection,
+  type DesktopSettingsSectionInjected,
+} from './DesktopSettingsSections.tsx'
+import { resolveDesktopSettingsBridge } from './desktop-api.ts'
 import { en, zh, type SettingsKey } from './locales.ts'
 
 export type {
@@ -41,6 +46,7 @@ export type { SettingsDocumentActionInjected, SettingsDocumentActionProps } from
 export type { SettingsDocumentState } from './settings-document-store.ts'
 export { SettingsDocumentStore } from './settings-document-store.ts'
 export type { SettingsKey } from './locales.ts'
+export type { DesktopSettingsSectionInjected, DesktopSettingsSectionProps } from './DesktopSettingsSections.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -72,6 +78,7 @@ export function apply(ctx: ClientContext): void {
   // seat, and the nav label is a thunk the owner resolves per render — no
   // locale/change re-registration wiring.
   const t = ctx.locale.bind(NS)
+  const desktop = resolveDesktopSettingsBridge()
   // The shared SettingsScope mirror updates after document commits and reconnects.
   const documentController = ctx.remote.$host.isLoopback
     ? new SettingsDocumentStore(ctx, ctx.settingsScope.describe())
@@ -180,4 +187,32 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     children: { 'settings.general.item': { kind: 'list', scope: 'root' } },
   }, GeneralSection))
+  if (desktop === undefined) return
+  const desktopInjected = (): DesktopSettingsSectionInjected => ({ desktop })
+  ctx.slots.inject('settings.section', function* () {
+    yield ctx.slots.register({
+      name: 'settings.section',
+      id: 'mcp-market',
+      order: 25,
+      label: () => t('desktop.mcp.nav'),
+      locale: NS,
+      inject: desktopInjected,
+    }, DesktopMcpMarketplaceSection)
+    yield ctx.slots.register({
+      name: 'settings.section',
+      id: 'account-info',
+      order: 30,
+      label: () => t('desktop.account.nav'),
+      locale: NS,
+      inject: desktopInjected,
+    }, DesktopAccountSection)
+    yield ctx.slots.register({
+      name: 'settings.section',
+      id: 'computer-control',
+      order: 35,
+      label: () => t('desktop.computer.nav'),
+      locale: NS,
+      inject: desktopInjected,
+    }, DesktopComputerControlSection)
+  })
 }

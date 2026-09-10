@@ -1,0 +1,167 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titleRow h2,
+.section h3 {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+}
+
+.titleRow h2 {
+  font-size: 20px;
+  line-height: 30px;
+}
+
+.section h3 {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.search {
+  display: flex;
+  gap: 8px;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+}
+
+.primaryButton,
+.dangerButton {
+  flex: none;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.primaryButton {
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-brand-primary-invert);
+}
+
+.dangerButton {
+  border-color: var(--dsw-alias-state-error-primary);
+  background: transparent;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.primaryButton:disabled,
+.dangerButton:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card,
+.metric,
+.empty {
+  min-width: 0;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 12px;
+}
+
+.card strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version,
+.installed {
+  justify-self: end;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 78px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.metric span {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.metric strong {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 20px;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty,
+.approval {
+  padding: 14px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+@media (max-width: 620px) {
+  .list,
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+}

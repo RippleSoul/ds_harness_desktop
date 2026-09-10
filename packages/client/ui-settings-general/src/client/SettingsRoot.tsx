@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  ConnectionIndicator,
+  ConnectionIndicator, IconBrowseOutline16, IconCodeOutline16,
   IconAgentPresetOutline16, IconCloseOutline16, IconDataOutline16,
   IconPersonalizationOutline16, IconSettingsOutline16,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -28,6 +28,9 @@ function navIcon(id: string) {
   if (id === 'models') return <IconDataOutline16 className={css.navIcon} size={16} />
   if (id === 'agent-presets') return <IconAgentPresetOutline16 className={css.navIcon} size={16} />
   if (id === 'plugins') return <IconPersonalizationOutline16 className={css.navIcon} size={16} />
+  if (id === 'mcp-market') return <IconBrowseOutline16 className={css.navIcon} size={16} />
+  if (id === 'account-info') return <IconDataOutline16 className={css.navIcon} size={16} />
+  if (id === 'computer-control') return <IconCodeOutline16 className={css.navIcon} size={16} />
   return <IconSettingsOutline16 className={css.navIcon} size={16} />
 }
 
