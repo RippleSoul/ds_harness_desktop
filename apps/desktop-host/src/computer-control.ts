@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { Context } from '@deepseek-ai/cordis'
 import { AttachmentId } from '@deepseek-ai/dsh-attachment'
-import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
+import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool, type ToolExecution } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-approval'
@@ -68,7 +68,7 @@ const SCREENSHOT_VALUE_SCHEMA = {
 interface DesktopScreenshotValue {
   readonly image: {
     readonly attachmentId: string
-    readonly mediaType: ImageMediaType
+    readonly mediaType: typeof SCREENSHOT_MEDIA_TYPE
     readonly bytes: number
     readonly width: number
     readonly height: number
