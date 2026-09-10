@@ -27,6 +27,8 @@ On its first launch with no existing workspace records, Desktop creates and regi
 
 The main dsh renderer receives only the desktop protocol marker. The separate Desktop-management renderer receives structured plugin operations plus the MCP Marketplace search, list, add, and remove operations; neither renderer receives filesystem access, raw Electron IPC, a shell, arbitrary pnpm arguments, or an arbitrary process-launch capability.
 
+Desktop also composes the published experimental Agent Teams layers after the base and Web layers. A conversation can use its existing delegation tools to create a named team; the header Team panel shows the durable roster, member state, shared task board, and teammate conversations. Members share the selected workspace, so task write scopes are warnings rather than locks and the lead remains responsible for the final review.
+
 Electron chooses typed English or Chinese shell copy from its application locale and falls back to English. Menus, native dialogs, and the plugin-management renderer use the same locale payload; the repository Client UI i18n gate checks these desktop sources.
 
 ### Seed installation
