@@ -78,8 +78,10 @@ jobs:
             apps/desktop/.desktop-build/targets/win-x64/artifacts/*.exe.blockmap
             apps/desktop/.desktop-build/targets/win-x64/artifacts/rc.yml
 
-  publish-latest:
-    needs: [build-macos, build-windows]
+  # macOS is the primary personal target. Publish it as soon as its build is
+  # ready instead of making Mac users wait for the slower Windows runner.
+  publish-macos-latest:
+    needs: build-macos
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -87,21 +89,36 @@ jobs:
           name: personal-desktop-release-macos
           path: release-assets/macos
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: personal-desktop-release-windows
-          path: release-assets/windows
-
-      - name: Replace latest desktop release
+      - name: Publish latest macOS desktop release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
           fi
-          gh release create latest release-assets/macos/* release-assets/windows/* \
+          gh release create latest release-assets/macos/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "DeepSeek Harness · Latest" \
             --prerelease \
-            --notes "Download the macOS .dmg or Windows .exe below. This release is replaced automatically by the next successful personal desktop build."
+            --notes "macOS is available now. The Windows installer is added automatically when its build finishes."
+
+  # Keep Windows independent while it builds, then append its files to the
+  # release created by the macOS job. If Windows fails, the usable macOS build
+  # remains available rather than withholding the entire release.
+  publish-windows-latest:
+    needs: [publish-macos-latest, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: personal-desktop-release-windows
+          path: release-assets/windows
+
+      - name: Add Windows installer to latest desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload latest release-assets/windows/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
