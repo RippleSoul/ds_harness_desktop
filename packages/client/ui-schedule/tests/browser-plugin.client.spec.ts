@@ -87,7 +87,7 @@ describe('ui-schedule browser half', () => {
     expect(layout.selectPanel).toHaveBeenCalledWith(null)
 
     const Icon = sidebar?.component as ComponentType<PropsRuntime<'sidebar.panellist'>>
-    const view = render(createElement(Icon, { size: 16, active: false }))
+    const view = render(createElement(Icon, { size: 16, active: false } as PropsRuntime<'sidebar.panellist'>))
     expect(view.container.querySelector('svg')).not.toBeNull()
 
     await fiber.dispose()
