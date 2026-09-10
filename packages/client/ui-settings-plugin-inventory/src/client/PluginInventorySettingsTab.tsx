@@ -187,7 +187,7 @@ const TAG_TONES = {
   failed: 'danger',
 } as const satisfies Record<EnablementKind, TagTone>
 
-const MODULE_BRIEF_KEYS = {
+const MODULE_BRIEF_KEYS: Readonly<Record<string, PluginInventoryLocaleKey>> = {
   persona: 'brief.persona',
   'agent-instructions': 'brief.agentInstructions',
   'command-feedback': 'brief.commandFeedback',
@@ -221,7 +221,7 @@ const MODULE_BRIEF_KEYS = {
   'tool-todo': 'brief.todo',
   'tool-web': 'brief.web',
   'tool-present': 'brief.present',
-} as const satisfies Record<string, PluginInventoryLocaleKey>
+}
 
 /** Compact Chinese/English product label for one internal module identifier. */
 function moduleBrief(moduleName: string, t: Translate): string {
