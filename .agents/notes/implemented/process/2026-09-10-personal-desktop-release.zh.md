@@ -12,7 +12,7 @@ Status: implemented
 
 桌面打包仅在显式设置 `DSH_DESKTOP_PERSONAL_UNSIGNED=1` 时允许个人未签名构建。该构建跳过 macOS 签名和公证，但保留标准打包 Electron、内置运行时和离线 seed 工作流。`DSH_DESKTOP_PERSONAL_UPDATE_URL` 覆盖该构建的通用更新地址。
 
-[Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) 每日或按需将 `main` rebase 到官方 `master`，以个人构建设置打包 Apple Silicon macOS，并替换 `latest` GitHub Release 资源。DMG 用于首次安装；ZIP、blockmap 和 `latest-mac.yml` 供 electron-updater 更新。
+[Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) 在每次推送、每日或按需将 `main` rebase 到官方 `master`，以个人构建设置打包 Apple Silicon macOS，并替换 `latest` GitHub Release 资源。DMG 用于首次安装；ZIP、blockmap 和 `latest-mac.yml` 供 electron-updater 更新。
 
 上游 [real-API E2E workflow](../../../../.github/workflows/e2e.yml) 只在 `deepseek-ai` 仓库运行。这个公开个人仓库没有也不应拥有其私密测试密钥，并且该测试不验证桌面版发布。
 
