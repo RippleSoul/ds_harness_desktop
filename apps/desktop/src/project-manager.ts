@@ -130,6 +130,16 @@ const DESKTOP_PROFILE_BUNDLES = [
   '@deepseek-ai/dsh-experimental-agent-team-profile',
   '@deepseek-ai/dsh-experimental-agent-team-web-profile',
 ] as const
+/**
+ * The first public Desktop profile shipped before Agent Teams became built-in.
+ * Keep this prefix readable during upgrades so its user-installed plugins can
+ * be carried into a current profile rather than making the application fail to
+ * start before its transactional migration begins.
+ */
+const LEGACY_DESKTOP_PROFILE_BUNDLES = [
+  '@deepseek-ai/dsh-base',
+  '@deepseek-ai/dsh-web-app',
+] as const
 const WORKSPACE_SETTINGS = 'nodeLinker: hoisted\nautoInstallPeers: false\nstrictDepBuilds: true\n'
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*|[a-z0-9][a-z0-9._~-]*)$/u
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+_-]*$/u
@@ -360,13 +370,18 @@ function projectManifest(projectDir: string): DesktopProjectManifest {
 
 function profilePluginNames(projectDir: string): readonly string[] {
   const bundles = projectManifest(projectDir).dsh.profile.bundles
-  if (!DESKTOP_PROFILE_BUNDLES.every((bundle, index) => bundles[index] === bundle)) {
-    throw new Error('desktop project: profile must begin with the built-in desktop bundle list')
-  }
-  const plugins = bundles.slice(DESKTOP_PROFILE_BUNDLES.length)
   if (new Set(bundles).size !== bundles.length) {
     throw new Error('desktop project: profile bundle list contains a duplicate package')
   }
+  const builtInBundles = [DESKTOP_PROFILE_BUNDLES, LEGACY_DESKTOP_PROFILE_BUNDLES]
+    .find(prefix => prefix.every((bundle, index) => bundles[index] === bundle))
+  if (builtInBundles === undefined) {
+    throw new Error('desktop project: profile must begin with the built-in desktop bundle list')
+  }
+  // A user might have manually installed a bundle that later became built-in.
+  // It belongs to neither the user plugin inventory nor the migrated suffix.
+  const plugins = bundles.slice(builtInBundles.length)
+    .filter(bundle => !DESKTOP_PROFILE_BUNDLES.includes(bundle as typeof DESKTOP_PROFILE_BUNDLES[number]))
   for (const plugin of plugins) assertPackageName(plugin)
   return plugins
 }

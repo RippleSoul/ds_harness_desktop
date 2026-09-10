@@ -396,7 +396,7 @@ describe('desktop project transactions', () => {
     expect(invocation.env.NPM_CONFIG_REGISTRY).toBe('https://registry.npmjs.org/')
   })
 
-  it('reconciles dsh to the packaged release without removing desktop plugins', async () => {
+  it('migrates a legacy desktop profile without removing desktop plugins', async () => {
     const root = temporaryRoot()
     const paths = resolveDesktopPaths(join(root, '.dsh'))
     const manager = new DesktopProjectManager(paths, { node: process.execPath, pnpm: writeFakePnpm(root) })
@@ -409,6 +409,21 @@ describe('desktop project transactions', () => {
     writeIntegrity(firstSeed)
     await manager.applyRelease(firstSeed, '1.0.0', hooks())
     await manager.mutate({ type: 'plugin-add', spec: '@scope/plugin@2.0.0' }, hooks())
+
+    // This is the profile shape created before Agent Teams became a built-in
+    // Desktop bundle. It must remain upgradeable instead of blocking startup.
+    const legacyManifestPath = join(paths.profile, 'package.json')
+    const legacyManifest = JSON.parse(readFileSync(legacyManifestPath, 'utf8')) as {
+      dsh: { profile: { bundles: string[] } }
+    }
+    legacyManifest.dsh.profile.bundles = [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      // A formerly user-installed bundle must become built-in exactly once.
+      '@deepseek-ai/dsh-experimental-agent-team-profile',
+      '@scope/plugin',
+    ]
+    writeFileSync(legacyManifestPath, `${JSON.stringify(legacyManifest)}\n`)
 
     const nextSeed = join(root, 'seed-2')
     createTestSeedMetadata(nextSeed, release('1.1.0'))
@@ -428,6 +443,8 @@ describe('desktop project transactions', () => {
     expect(profile.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-experimental-agent-team-profile',
+      '@deepseek-ai/dsh-experimental-agent-team-web-profile',
       '@scope/plugin',
     ])
     expect(readFileSync(join(paths.pnpm.store, 'release-1'), 'utf8')).toBe('one')

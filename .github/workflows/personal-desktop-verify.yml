@@ -27,6 +27,9 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
+      - name: Verify legacy desktop profile migration
+        run: pnpm exec vitest run apps/desktop/tests/project-manager.spec.ts
+
       - name: Build unsigned Apple Silicon verification installer
         env:
           DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
