@@ -53,6 +53,39 @@ export interface DesktopSettingsBridge {
   }
 }
 
+function readDesktopSettingsBridge(): DesktopSettingsBridge | undefined {
+  const bridge = window.dshDesktop
+  if (bridge?.protocolVersion !== 1 || bridge.mcp === undefined || bridge.account === undefined) return undefined
+  return bridge
+}
+
+/** True only for the Electron-owned application origin, never for the web app. */
+function isDesktopApplicationOrigin(): boolean {
+  return window.location.protocol === 'dsh-app:' && window.location.hostname === 'app'
+}
+
+function requireDesktopSettingsBridge(): DesktopSettingsBridge {
+  const bridge = readDesktopSettingsBridge()
+  if (bridge === undefined) throw new Error('Desktop settings bridge is unavailable')
+  return bridge
+}
+
+// The client extension registry can initialize before a context-isolated
+// preload object becomes observable in its realm. Keep the Desktop sections on
+// the ledger in that short window and resolve each native operation when used.
+const deferredDesktopSettingsBridge: DesktopSettingsBridge = {
+  protocolVersion: 1,
+  mcp: {
+    list: () => requireDesktopSettingsBridge().mcp.list(),
+    search: query => requireDesktopSettingsBridge().mcp.search(query),
+    add: request => requireDesktopSettingsBridge().mcp.add(request),
+    remove: id => requireDesktopSettingsBridge().mcp.remove(id),
+  },
+  account: {
+    summary: () => requireDesktopSettingsBridge().account.summary(),
+  },
+}
+
 declare global {
   interface Window {
     /** Present only in the packaged Desktop application. */
@@ -66,7 +99,5 @@ declare global {
  * @returns the Desktop settings bridge, or undefined outside Desktop.
  */
 export function resolveDesktopSettingsBridge(): DesktopSettingsBridge | undefined {
-  const bridge = window.dshDesktop
-  if (bridge?.protocolVersion !== 1 || bridge.mcp === undefined || bridge.account === undefined) return undefined
-  return bridge
+  return readDesktopSettingsBridge() ?? (isDesktopApplicationOrigin() ? deferredDesktopSettingsBridge : undefined)
 }
