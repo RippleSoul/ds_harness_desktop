@@ -24,14 +24,18 @@ export function createElectronBuilderConfig(
   hostPlatform = process.platform,
   hostArch = process.arch,
 ) {
+  const personalUnsignedBuild = env.DSH_DESKTOP_PERSONAL_UNSIGNED === '1'
+  const personalUpdateUrl = env.DSH_DESKTOP_PERSONAL_UPDATE_URL?.trim()
   const appId = resolveDesktopAppId(env)
   const targetPlatform = env.DSH_DESKTOP_TARGET_PLATFORM
   const resolvedPlatform = targetPlatform ?? hostPlatform
   const resolvedArch = env.DSH_DESKTOP_TARGET_ARCH ?? hostArch
   const packagesMacOS = targetPlatform === 'darwin' || (targetPlatform === undefined && hostPlatform === 'darwin')
   const packagesWindows = targetPlatform === 'win32'
-  const macOSSigning = packagesMacOS ? resolveMacOSSigningEnvironment(env) : undefined
-  if (packagesMacOS) resolveMacOSNotarizationEnvironment(env)
+  const macOSSigning = packagesMacOS && !personalUnsignedBuild
+    ? resolveMacOSSigningEnvironment(env)
+    : undefined
+  if (packagesMacOS && !personalUnsignedBuild) resolveMacOSNotarizationEnvironment(env)
   const windowsSigner = packagesWindows
     ? createWindowsTokenSigner({
         certificateFile: env.DSH_DESKTOP_WINDOWS_CER_FILE,
@@ -64,21 +68,21 @@ export function createElectronBuilderConfig(
     mac: {
       category: 'public.app-category.developer-tools',
       identity: macOSSigning?.signingIdentity,
-      forceCodeSigning: true,
-      hardenedRuntime: true,
-      notarize: true,
+      forceCodeSigning: !personalUnsignedBuild,
+      hardenedRuntime: !personalUnsignedBuild,
+      notarize: !personalUnsignedBuild,
       target: ['dmg', 'zip'],
     },
     dmg: {
-      sign: true,
+      sign: !personalUnsignedBuild,
       writeUpdateInfo: false,
     },
     afterSign: context => {
-      if (context.electronPlatformName !== 'darwin') return
+      if (context.electronPlatformName !== 'darwin' || personalUnsignedBuild) return
       verifyMacOSSignatureAfterSign(context, macOSSigning ?? resolveMacOSSigningEnvironment(env))
     },
     artifactBuildCompleted: artifact => {
-      if (!artifact.file.endsWith('.dmg')) return
+      if (!artifact.file.endsWith('.dmg') || personalUnsignedBuild) return
       return notarizeMacOSDiskImageArtifact(
         artifact,
         env,
@@ -102,7 +106,7 @@ export function createElectronBuilderConfig(
       allowToChangeInstallationDirectory: true,
       differentialPackage: true,
     },
-    publish: [{ provider: 'generic', url: update.publicUrl }],
+    publish: [{ provider: 'generic', url: personalUpdateUrl || update.publicUrl }],
   }
 }
 

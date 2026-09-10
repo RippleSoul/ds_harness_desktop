@@ -1,0 +1,66 @@
+name: Personal macOS Desktop release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: personal-desktop-release
+  cancel-in-progress: false
+
+jobs:
+  sync-build-release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Rebase personal changes onto the official source
+        run: |
+          git config user.name 'RippleSoul desktop updater'
+          git config user.email '41898282+RippleSoul@users.noreply.github.com'
+          git remote add upstream https://github.com/deepseek-ai/deepseek-harness.git
+          git fetch upstream master
+          git rebase upstream/master
+          git push --force-with-lease origin HEAD:main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Verify personal desktop packaging settings
+        run: pnpm exec vitest run apps/desktop/tests/macos-signature.spec.ts
+
+      - name: Build unsigned Apple Silicon desktop release
+        env:
+          DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
+          DSH_DESKTOP_PERSONAL_UNSIGNED: '1'
+          DSH_DESKTOP_PERSONAL_UPDATE_URL: https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest
+          DOWNLOAD_TEST_ORIGIN: https://github.com
+        run: pnpm run package:desktop:mac:arm64
+
+      - name: Publish installer and updater feed
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Personal desktop latest
+          prerelease: true
+          make_latest: false
+          files: |
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.dmg
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.yml
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.blockmap
+          fail_on_unmatched_files: true
