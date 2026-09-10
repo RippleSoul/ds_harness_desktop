@@ -24,7 +24,7 @@ Desktop Agent 可以查看和修改选定工作区，但不能查看正在使用
 
 ## Testing
 
-Desktop 云端验证工作流会打包 Apple Silicon macOS 与 Windows 安装包，包含私有 Host 的完整依赖闭包。运行时行为需要交互式桌面：macOS 首次使用时必须显示系统的“屏幕录制”和“辅助功能”提示；Harness 确认界面必须对每个请求的动作进行批准，系统命令才会执行。
+Desktop 云端验证工作流会打包 Apple Silicon macOS 与 Windows 安装包，包含私有 Host 的完整依赖闭包。两个构建都通过后，它会把固定的 `latest` GitHub Release 替换为最新安装包。发行页提供给人安装的最终 `.dmg` 与 `.exe`，同时保留更新器需要的 macOS 压缩包和很小的更新附属文件；不会发布解包后的应用目录。临时的构建传输产物会在一天后过期。运行时行为需要交互式桌面：macOS 首次使用时必须显示系统的“屏幕录制”和“辅助功能”提示；Harness 确认界面必须对每个请求的动作进行批准，系统命令才会执行。
 
 ## Consequences
 

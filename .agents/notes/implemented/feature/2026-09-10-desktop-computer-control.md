@@ -24,7 +24,7 @@ Every invocation goes through the existing one-shot `ctx.approval` request befor
 
 ## Testing
 
-The Desktop cloud verification workflow packages both Apple Silicon macOS and Windows installers, including the private Host dependency closure. Runtime behavior requires an interactive desktop: macOS must display its native Screen Recording and Accessibility prompts on first use, and the Harness approval UI must approve each requested action before the operating-system command runs.
+The Desktop cloud verification workflow packages both Apple Silicon macOS and Windows installers, including the private Host dependency closure. After both builds pass, it replaces the fixed `latest` GitHub Release with the newest installers. The release presents the final `.dmg` and `.exe` files for people to install, plus the macOS archive and small update sidecars required by the updater; it does not publish the unpacked application directory. The temporary build-transfer artifacts expire after one day. Runtime behavior requires an interactive desktop: macOS must display its native Screen Recording and Accessibility prompts on first use, and the Harness approval UI must approve each requested action before the operating-system command runs.
 
 ## Consequences
 

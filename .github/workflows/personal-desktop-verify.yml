@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: personal-desktop-verify-${{ github.ref }}
@@ -37,9 +37,14 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: personal-desktop-verify-macos
+          name: personal-desktop-release-macos
           if-no-files-found: error
-          path: apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*
+          retention-days: 1
+          path: |
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.dmg
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip.blockmap
+            apps/desktop/.desktop-build/targets/mac-arm64/artifacts/rc-mac.yml
 
   build-windows:
     runs-on: windows-latest
@@ -65,6 +70,38 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: personal-desktop-verify-windows
+          name: personal-desktop-release-windows
           if-no-files-found: error
-          path: apps/desktop/.desktop-build/targets/win-x64/artifacts/*
+          retention-days: 1
+          path: |
+            apps/desktop/.desktop-build/targets/win-x64/artifacts/*.exe
+            apps/desktop/.desktop-build/targets/win-x64/artifacts/*.exe.blockmap
+            apps/desktop/.desktop-build/targets/win-x64/artifacts/rc.yml
+
+  publish-latest:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: personal-desktop-release-macos
+          path: release-assets/macos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: personal-desktop-release-windows
+          path: release-assets/windows
+
+      - name: Replace latest desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          fi
+          gh release create latest release-assets/macos/* release-assets/windows/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "DeepSeek Harness · Latest" \
+            --prerelease \
+            --notes "Download the macOS .dmg or Windows .exe below. This release is replaced automatically by the next successful personal desktop build."
