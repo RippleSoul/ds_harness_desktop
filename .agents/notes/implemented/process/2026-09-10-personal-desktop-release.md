@@ -14,6 +14,8 @@ The desktop package accepts `DSH_DESKTOP_PERSONAL_UNSIGNED=1` only when a build 
 
 [Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) rebases `main` onto the official `master` branch daily or on demand, packages Apple Silicon macOS with the personal build settings, and replaces the `latest` GitHub Release assets. The DMG supports first installation; the ZIP, blockmap, and `latest-mac.yml` support electron-updater.
 
+The upstream [real-API E2E workflow](../../../../.github/workflows/e2e.yml) runs only in the `deepseek-ai` repository. Its private test key is unavailable in this public personal fork and the test does not validate the desktop release.
+
 ## Alternatives considered
 
 **Purchase signing identities.** Apple signing and notarization provide the normal Gatekeeper experience, but are unnecessary for an owner-only build and require a paid Apple Developer membership.
