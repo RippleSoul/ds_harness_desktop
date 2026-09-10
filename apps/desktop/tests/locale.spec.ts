@@ -16,7 +16,7 @@ describe('desktop locale dictionaries', () => {
   })
 
   it('keeps visible Desktop-management HTML copy in the locale dictionaries', () => {
-    const paths = ['../renderer/plugin-manager.html', '../renderer/mcp-market.html']
+    const paths = ['../renderer/plugin-manager.html', '../renderer/mcp-market.html', '../renderer/account.html']
     for (const path of paths) {
       const html = readFileSync(new URL(path, import.meta.url), 'utf8')
       const staticText = [...html.matchAll(/>([^<]*\p{L}[^<]*)</gu)].map(match => match[1]?.trim())

@@ -1,0 +1,70 @@
+name: Verify personal desktop branch
+
+on:
+  push:
+    branches: [personal-desktop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-desktop-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build unsigned Apple Silicon verification installer
+        env:
+          DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
+          DSH_DESKTOP_PERSONAL_UNSIGNED: '1'
+          DSH_DESKTOP_PERSONAL_UPDATE_URL: https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest
+          DOWNLOAD_TEST_ORIGIN: https://github.com
+        run: pnpm run package:desktop:mac:arm64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal-desktop-verify-macos
+          if-no-files-found: error
+          path: apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build unsigned Windows verification installer
+        env:
+          DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
+          DSH_DESKTOP_PERSONAL_UNSIGNED: '1'
+          DSH_DESKTOP_PERSONAL_UPDATE_URL: https://github.com/RippleSoul/ds_harness_desktop/releases/download/latest
+          DOWNLOAD_TEST_ORIGIN: https://github.com
+        run: pnpm run package:desktop:win:x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal-desktop-verify-windows
+          if-no-files-found: error
+          path: apps/desktop/.desktop-build/targets/win-x64/artifacts/*

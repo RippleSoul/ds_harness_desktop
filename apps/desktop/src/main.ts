@@ -22,6 +22,7 @@ import { claimDesktopSingleInstance } from './single-instance.ts'
 import { DesktopUpdateCoordinator } from './update-coordinator.ts'
 
 const SCHEME = 'dsh-app'
+const ACCOUNT_SUMMARY_PATH = '/desktop/account-summary'
 let focusPrimaryWindow = (): void => {}
 
 function errorOf(reason: unknown, fallback: string): Error {
@@ -150,6 +151,7 @@ async function main(): Promise<void> {
   let host: DesktopHostProcess | undefined
   let mainWindow: BrowserWindow | undefined
   let mcpWindow: BrowserWindow | undefined
+  let accountWindow: BrowserWindow | undefined
   let shellInstallerOwnsQuit = false
   let updateState: DesktopUpdateState = { phase: 'idle' }
   const locale = resolveDesktopLocale(app.getLocale())
@@ -290,6 +292,18 @@ async function main(): Promise<void> {
     if (typeof id !== 'string') throw new Error('dsh desktop: MCP id must be a string')
     return mutate(event, { type: 'mcp-remove', id })
   })
+  ipcMain.handle(DESKTOP_IPC.accountSummary, async (event) => {
+    assertDesktopSender(event, ['shell'])
+    const active = host
+    if (active === undefined) throw new Error('dsh desktop: backend is unavailable')
+    const response = await active.fetch(new Request(`${SCHEME}://app${ACCOUNT_SUMMARY_PATH}`))
+    const body: unknown = await response.json().catch(() => undefined)
+    if (!response.ok) {
+      const detail = isRecord(body) && typeof body.error === 'string' ? body.error : 'DeepSeek account request failed.'
+      throw new Error(detail)
+    }
+    return body
+  })
   ipcMain.handle(DESKTOP_IPC.updatesCheck, async (event) => {
     assertDesktopSender(event, ['shell'])
     return updates.check()
@@ -354,9 +368,23 @@ async function main(): Promise<void> {
     void mcpWindow.loadURL(`${SCHEME}://shell/mcp-market.html`)
   }
 
+  const openAccountWindow = (): void => {
+    if (accountWindow !== undefined && !accountWindow.isDestroyed()) {
+      accountWindow.focus()
+      return
+    }
+    accountWindow = createWindow(managementPreload)
+    accountWindow.setSize(720, 600)
+    accountWindow.setTitle(messages.accountWindowTitle)
+    accountWindow.once('ready-to-show', () => { accountWindow?.show() })
+    accountWindow.once('closed', () => { accountWindow = undefined })
+    void accountWindow.loadURL(`${SCHEME}://shell/account.html`)
+  }
+
   Menu.setApplicationMenu(Menu.buildFromTemplate([{
     label: process.platform === 'darwin' ? app.name : messages.application,
     submenu: [
+      { label: messages.accountMenu, click: openAccountWindow },
       {
         label: development === undefined ? messages.mcpMarketMenu : messages.mcpMarketMenuPackagedOnly,
         accelerator: 'CmdOrCtrl+,',

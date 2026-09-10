@@ -20,10 +20,14 @@ import {
   loadOverlayPatches,
 } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import type {} from '@deepseek-ai/dsh-api-gateway'
 import type { ConnectionFetchHandler } from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-client-modules'
+import { deriveTurnTokenUsage } from '@deepseek-ai/dsh-token-meter/client'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import type { WorkspaceRegistry } from '@deepseek-ai/dsh-workspace'
 import { renderIndexInjections, type IndexInjection } from '@deepseek-ai/dsh-host-webserver'
 import {
@@ -82,6 +86,130 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+/** One balance bucket returned by the official DeepSeek account endpoint. */
+interface DeepSeekBalance {
+  readonly currency: string
+  readonly total: string
+  readonly granted: string
+  readonly toppedUp: string
+}
+
+/** Aggregate provider-reported token usage retained in Desktop sessions. */
+interface DesktopTokenUsage {
+  readonly sessions: number
+  readonly scannedSessions: number
+  readonly truncated: boolean
+  readonly inputTokens: number
+  readonly outputTokens: number
+  readonly cacheReadTokens: number
+  readonly cacheWriteTokens: number
+}
+
+function decimalValue(value: unknown): string {
+  if (typeof value === 'string' && value.trim() !== '') return value
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return '0'
+}
+
+function parseBalances(value: unknown): readonly DeepSeekBalance[] {
+  if (!isRecord(value) || !Array.isArray(value.balance_infos)) {
+    throw new Error('DeepSeek account returned an invalid balance response')
+  }
+  return value.balance_infos.map((entry): DeepSeekBalance => {
+    if (!isRecord(entry) || typeof entry.currency !== 'string' || entry.currency === '') {
+      throw new Error('DeepSeek account returned an invalid balance item')
+    }
+    return {
+      currency: entry.currency,
+      total: decimalValue(entry.total_balance),
+      granted: decimalValue(entry.granted_balance),
+      toppedUp: decimalValue(entry.topped_up_balance),
+    }
+  })
+}
+
+/** Split a complete session log into turn-complete chunks for exact usage derivation. */
+function completeTurns(events: readonly SessionEvent[]): readonly (readonly SessionEvent[])[] {
+  const turns: SessionEvent[][] = []
+  let current: SessionEvent[] | undefined
+  for (const event of events) {
+    if (event.type === 'turn/start') current = [event]
+    else if (current !== undefined) current.push(event)
+    if (current !== undefined && event.type === 'turn/end') {
+      turns.push(current)
+      current = undefined
+    }
+  }
+  return turns
+}
+
+/** Read a bounded all-session usage total without exposing any session content to Electron. */
+async function desktopTokenUsage(ctx: Context): Promise<DesktopTokenUsage> {
+  const persistence = ctx.get('sessionPersistence') as SessionPersistence | undefined
+  if (persistence === undefined) throw new Error('dsh desktop: composition did not provide sessionPersistence')
+  const snapshots = await persistence.list()
+  const selected = [...snapshots]
+    .sort((left, right) => right.header.createdAt - left.header.createdAt)
+    .slice(0, TOKEN_USAGE_SESSION_LIMIT)
+  let inputTokens = 0
+  let outputTokens = 0
+  let cacheReadTokens = 0
+  let cacheWriteTokens = 0
+  for (const snapshot of selected) {
+    const handle = await persistence.open(snapshot.header.id, 'read')
+    try {
+      const { events } = await handle.read()
+      for (const turn of completeTurns(events)) {
+        const usage = deriveTurnTokenUsage(turn)
+        if (usage === undefined) continue
+        inputTokens += usage.uncachedInputTokens
+        outputTokens += usage.outputTokens
+        cacheReadTokens += usage.cacheReadTokens ?? 0
+        cacheWriteTokens += usage.cacheWriteTokens ?? 0
+      }
+    } finally {
+      await handle.close()
+    }
+  }
+  return {
+    sessions: snapshots.length,
+    scannedSessions: selected.length,
+    truncated: snapshots.length > selected.length,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+  }
+}
+
+/** Resolve the managed DeepSeek key and return a key-free account/usage view. */
+async function desktopAccountSummary(ctx: Context): Promise<Response> {
+  const credentials = ctx.get('credentials')
+  const key = await credentials?.resolve(credentialRef('DEEPSEEK_API_KEY'))
+  if (key === undefined) {
+    return Response.json({ error: 'DeepSeek API key is not configured.' }, { status: 409 })
+  }
+  const abort = new AbortController()
+  const timer = setTimeout(() => { abort.abort(new Error('DeepSeek account request timed out')) }, ACCOUNT_REQUEST_TIMEOUT_MS)
+  try {
+    const response = await fetch(DEEPSEEK_ACCOUNT_URL, {
+      headers: { authorization: `Bearer ${key.value}` },
+      signal: abort.signal,
+    })
+    if (!response.ok) {
+      return Response.json({ error: `DeepSeek account request failed (${String(response.status)}).` }, { status: 502 })
+    }
+    const balance = parseBalances(await response.json())
+    const usage = await desktopTokenUsage(ctx)
+    return Response.json({ balance, usage }, { headers: { 'cache-control': 'no-store' } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'DeepSeek account request failed.'
+    return Response.json({ error: message }, { status: 502 })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function isDesktopHostCommand(message: unknown): message is DesktopHostCommand {
   return typeof message === 'object' && message !== null && 'type' in message
     && (message as Record<string, unknown>).type === 'shutdown'
@@ -97,7 +225,11 @@ const ROOT_CONFIG = '# Electron desktop composition root; package transactions o
 const ROOT_CONFIG_FILENAME = 'desktop.cordis.yml'
 const MCP_CONFIG_FILENAME = 'desktop-mcp.json'
 const DESKTOP_STREAM_PATH = '/.dsh/remote-stream'
+const DESKTOP_ACCOUNT_PATH = '/desktop/account-summary'
 const DEFAULT_WORKSPACE_ENV = 'DSH_DEFAULT_WORKSPACE'
+const DEEPSEEK_ACCOUNT_URL = 'https://api.deepseek.com/user/balance'
+const ACCOUNT_REQUEST_TIMEOUT_MS = 12_000
+const TOKEN_USAGE_SESSION_LIMIT = 500
 
 const DESKTOP_TRANSPORT_SCRIPT = `globalThis.__DSH_TRANSPORT__={
   ownsHost:true,
@@ -269,6 +401,10 @@ function assetHandler(ctx: Context, projectDir: string): ConnectionFetchHandler 
     async fetch(request): Promise<Response> {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 })
       const url = new URL(request.url)
+      if (url.pathname === DESKTOP_ACCOUNT_PATH) {
+        if (request.method === 'HEAD') return new Response(null, { status: 200 })
+        return await desktopAccountSummary(ctx)
+      }
       if (url.pathname.startsWith('/plugins/')) return ctx.clientModules.fetchBundle(request)
       let pathname: string
       try {

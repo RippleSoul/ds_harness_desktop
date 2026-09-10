@@ -15,6 +15,7 @@ export const DESKTOP_IPC = {
   mcpAdd: 'dsh-desktop:mcp-add',
   mcpRemove: 'dsh-desktop:mcp-remove',
   mcpSearch: 'dsh-desktop:mcp-search',
+  accountSummary: 'dsh-desktop:account-summary',
   updatesCheck: 'dsh-desktop:updates-check',
   updatesInstall: 'dsh-desktop:updates-install',
   updatesState: 'dsh-desktop:updates-state',
@@ -25,6 +26,28 @@ export interface DesktopUpdateState {
   readonly phase: 'idle' | 'checking' | 'available' | 'installing' | 'ready' | 'error'
   readonly version?: string
   readonly message?: string
+}
+
+/** One official DeepSeek balance bucket shown without exposing the API key. */
+export interface DesktopAccountBalance {
+  readonly currency: string
+  readonly total: string
+  readonly granted: string
+  readonly toppedUp: string
+}
+
+/** Key-free account and retained-session token totals for the desktop dashboard. */
+export interface DesktopAccountSummary {
+  readonly balance: readonly DesktopAccountBalance[]
+  readonly usage: {
+    readonly sessions: number
+    readonly scannedSessions: number
+    readonly truncated: boolean
+    readonly inputTokens: number
+    readonly outputTokens: number
+    readonly cacheReadTokens: number
+    readonly cacheWriteTokens: number
+  }
 }
 
 /** Narrow bridge exposed through context isolation. */
@@ -42,6 +65,9 @@ export interface DshDesktopApi {
     search(query: string): Promise<readonly DesktopMcpMarketServer[]>
     add(request: DesktopMcpAddRequest): Promise<void>
     remove(id: string): Promise<void>
+  }
+  readonly account: {
+    summary(): Promise<DesktopAccountSummary>
   }
   readonly updates: {
     check(): Promise<DesktopUpdateState>

@@ -1,7 +1,7 @@
 /** Context-isolated renderer bridge for desktop package and update operations. */
 
 import { contextBridge, ipcRenderer } from 'electron'
-import { DESKTOP_IPC, type DshDesktopApi, type DesktopUpdateState } from './ipc.ts'
+import { DESKTOP_IPC, type DesktopAccountSummary, type DshDesktopApi, type DesktopUpdateState } from './ipc.ts'
 
 const api: DshDesktopApi = {
   protocolVersion: 1,
@@ -17,6 +17,9 @@ const api: DshDesktopApi = {
     search: query => ipcRenderer.invoke(DESKTOP_IPC.mcpSearch, query) as Promise<ReturnType<DshDesktopApi['mcp']['search']> extends Promise<infer T> ? T : never>,
     add: request => ipcRenderer.invoke(DESKTOP_IPC.mcpAdd, request) as Promise<void>,
     remove: id => ipcRenderer.invoke(DESKTOP_IPC.mcpRemove, id) as Promise<void>,
+  },
+  account: {
+    summary: () => ipcRenderer.invoke(DESKTOP_IPC.accountSummary) as Promise<DesktopAccountSummary>,
   },
   updates: {
     check: () => ipcRenderer.invoke(DESKTOP_IPC.updatesCheck) as Promise<DesktopUpdateState>,
