@@ -14,6 +14,8 @@ Status: implemented
 
 [Personal macOS Desktop release](../../../../.github/workflows/personal-desktop-release.yml) 每日或按需将 `main` rebase 到官方 `master`，以个人构建设置打包 Apple Silicon macOS，并替换 `latest` GitHub Release 资源。DMG 用于首次安装；ZIP、blockmap 和 `latest-mac.yml` 供 electron-updater 更新。
 
+上游 [real-API E2E workflow](../../../../.github/workflows/e2e.yml) 只在 `deepseek-ai` 仓库运行。这个公开个人仓库没有也不应拥有其私密测试密钥，并且该测试不验证桌面版发布。
+
 ## Alternatives considered
 
 **购买签名身份。** Apple 签名和公证能提供标准 Gatekeeper 体验，但仅供所有者使用的构建并不需要，而且需要付费 Apple Developer 会员资格。
