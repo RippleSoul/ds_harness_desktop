@@ -41,7 +41,7 @@ function appleScriptText(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\r', '').replaceAll('\n', '\\r')
 }
 
-const SCREENSHOT_MEDIA_TYPE: ImageMediaType = 'image/png'
+const SCREENSHOT_MEDIA_TYPE = 'image/png' as const
 
 const SCREENSHOT_VALUE_SCHEMA = {
   type: 'object',
@@ -99,6 +99,20 @@ function screenshotContent(value: DesktopScreenshotValue): ContentBlock[] {
     { type: 'text', text: 'Captured the primary display and attached it to this conversation.' },
     { type: 'image', attachment: screenshotAttachment(value.image) },
   ]
+}
+
+function screenshotValue(image: ImageAttachmentRef): DesktopScreenshotValue['image'] {
+  return {
+    attachmentId: image.attachmentId,
+    mediaType: SCREENSHOT_MEDIA_TYPE,
+    bytes: image.bytes,
+    width: image.width,
+    height: image.height,
+    ...image.name === undefined ? {} : { name: image.name },
+    ...image.originalDimensions === undefined ? {} : {
+      originalDimensions: { ...image.originalDimensions },
+    },
+  }
 }
 
 function windowsScript(source: string): string[] {
@@ -194,7 +208,8 @@ export function installDesktopComputerTools(ctx: Context): void {
       try {
         await takeScreenshot(path)
         const data = await readFile(path)
-        return { image: await attachments.saveImage({ data, mediaType: SCREENSHOT_MEDIA_TYPE, name: 'desktop-screenshot.png' }) }
+        const image = await attachments.saveImage({ data, mediaType: SCREENSHOT_MEDIA_TYPE, name: 'desktop-screenshot.png' })
+        return { image: screenshotValue(image) }
       } finally {
         await rm(directory, { recursive: true, force: true })
       }
