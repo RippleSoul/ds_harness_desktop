@@ -42,6 +42,7 @@ import {
   encodeDesktopResponseStart,
   type DesktopHostRequestFrame,
 } from './wire.ts'
+import { installDesktopComputerTools } from './computer-control.ts'
 
 export { DESKTOP_HOST_PROTOCOL_VERSION } from './wire.ts'
 
@@ -504,6 +505,7 @@ export async function runDesktopHost(
   })
   current = ctx
   await ensureDefaultWorkspace(ctx)
+  installDesktopComputerTools(ctx)
   const connection = ctx.get('connection')
   const clientModules = ctx.get('clientModules')
   const gateway = ctx.get('typertGateway')

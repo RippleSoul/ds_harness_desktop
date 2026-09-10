@@ -1,0 +1,4 @@
+# Bilingual-pair consistency record (docs/i18n/README.md). Hashes are recorded after
+# the paired Markdown files are finalized.
+2026-09-10-desktop-computer-control.md: 7e688d78c14c98bfd101d48ac8d59c7a69d247e5
+2026-09-10-desktop-computer-control.zh.md: f10ce55a4ebde0f070152fb24981fdd4f098be60
