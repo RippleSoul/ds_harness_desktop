@@ -23,6 +23,17 @@ export const zh = {
   'relative.now': '现在到期',
   'relative.future': '{value}{unit}后',
   'relative.overdue': '已逾期 {value}{unit}',
+  'center.nav': '定时任务',
+  'center.title': '定时任务',
+  'center.search': '搜索定时任务',
+  'center.filters.aria': '任务状态',
+  'center.filter.all': '全部',
+  'center.filter.scheduled': '等待中',
+  'center.filter.overdue': '已逾期',
+  'center.list.aria': '定时任务列表',
+  'center.task.aria': '打开任务所属会话：{prompt}',
+  'center.empty.all': '暂无定时任务',
+  'center.empty.filtered': '没有符合条件的定时任务',
 } as const
 
 /** English dictionary, key-identical to the Chinese source of truth. */
@@ -45,6 +56,17 @@ export const en: Record<ScheduleCatalogKey, string> = {
   'relative.now': 'Due now',
   'relative.future': 'in {value} {unit}',
   'relative.overdue': '{value} {unit} overdue',
+  'center.nav': 'Scheduled tasks',
+  'center.title': 'Scheduled tasks',
+  'center.search': 'Search scheduled tasks',
+  'center.filters.aria': 'Task status',
+  'center.filter.all': 'All',
+  'center.filter.scheduled': 'Scheduled',
+  'center.filter.overdue': 'Overdue',
+  'center.list.aria': 'Scheduled task list',
+  'center.task.aria': 'Open the conversation for task: {prompt}',
+  'center.empty.all': 'No scheduled tasks',
+  'center.empty.filtered': 'No scheduled tasks match',
 }
 
 /** Key domain of the Schedule catalog namespace. */

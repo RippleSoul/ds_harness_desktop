@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package renders a read-only catalog of the current Session's active Schedule reminders in the Web header. It reads the complete `schedule` projection and issues no RPC or mutation. The browser derives status, local time, relative time, and ordering without adding those presentation values to durable state. The shipped Web bundle keeps the plugin disabled until the explicit Schedule overlay enables both the Host Schedule services and this client row.
+This package renders a read-only catalog of the current Session's active Schedule reminders in the Web header. It reads the complete `schedule` projection and issues no RPC or mutation. The browser derives status, local time, relative time, and ordering without adding those presentation values to durable state. The shipped Web bundle keeps the plugin disabled until the explicit Schedule overlay enables both the Host Schedule services and this client row. Desktop enables the same services in its private overlay and adds a root-scoped task center that summarizes active records already present in the loaded Session list.
 
 ## Table of Contents
 
@@ -33,6 +33,10 @@ dsh web --patch apps/cli/config/examples/schedule/cordis.yml
 
 The shipped Web graph already resolves `@deepseek-ai/dsh-client-ui-schedule` through a disabled `ui-schedule` row; the overlay enables that row together with `@deepseek-ai/dsh-schedule`. The trigger appears only while the Session is successfully open and the projection contains at least one active record. Opening it shows overdue rows first, then future rows by target time, with exact ties preserving the projection's creation order.
 
+### Desktop task center
+
+Desktop enables `time-context`, `schedule`, and `ui-schedule` through its private overlay. The sidebar places Scheduled tasks below New Session and above the Workspace browser. Its root-scoped page groups the active records already held by the Session Controller for ordinary Sessions, places overdue tasks first, supports All, Scheduled, and Overdue filters plus text search, and opens the task's owning conversation on selection. It has no duplicate task store, RPC, mutation, or background scan; creating and cancelling reminders remain Schedule-tool operations in the originating conversation.
+
 ### Read and dismiss the catalog
 
 Each row shows the complete wrapping prompt, a separate Scheduled or Overdue status, localized Once or the largest exact whole unit for a repeating interval, browser-local target time, and browser-clock-relative time. Intervals are never rounded, and the three metadata fields wrap across lines instead of clipping valid large values. The body-portaled popover targets 336px, shares the trigger's left edge when space permits, and shifts left to retain a 16px viewport margin when the trigger is near the right edge; its maximum width is the viewport width minus 32px. It scrolls vertically when needed and exposes no Schedule id, raw UTC value, details, or action controls.
@@ -55,6 +59,8 @@ The browser plugin contributes `schedule-catalog` to `conversation.session.heade
 |---|---|
 | [`src/client/index.ts`](src/client/index.ts) | Browser entry: locale registration and Session-header slot contribution |
 | [`src/client/ScheduleCatalogAction.tsx`](src/client/ScheduleCatalogAction.tsx) | Visibility, ordering, formatting, popover, and keyboard behavior |
+| [`src/client/ScheduleCenterPanel.tsx`](src/client/ScheduleCenterPanel.tsx) | Desktop task-center filtering, ordering, and return-to-conversation action |
+| [`src/client/ScheduleCenterPanel.module.css`](src/client/ScheduleCenterPanel.module.css) | Task-center layout and semantic-token presentation |
 | [`src/client/locales.ts`](src/client/locales.ts) | English and Chinese catalog copy |
 | [`src/index.ts`](src/index.ts) | Empty Host apply that keeps the optional browser feature addressable by Loader |
 | — | No runtime invariant companion is published because this read-only client catalog owns no mutable cross-plugin state. |
@@ -97,6 +103,7 @@ These limits define the current Schedule catalog. They are current package const
 - **Browser-derived time** — local and relative labels use the viewing browser's current locale, time zone, and clock. They are presentation values, not durable Schedule facts.
 - **Read-only surface** — creating and deleting reminders remain with the Schedule tools; the catalog has no mutation, retry, acknowledgement, toast, or delivery-receipt semantics.
 - **Open Session required** — a failed open hides even a tentative cached value because strict Session replay remains authoritative.
+- **Desktop is not a background scheduler** — the task center summarizes only Session-list records that Desktop already loaded. It does not wake a cold Session, run work while the app is closed, or send operating-system notifications.
 
 <a id="dev-note"></a>
 ### Dev Note

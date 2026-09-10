@@ -27,6 +27,8 @@ On its first launch with no existing workspace records, Desktop creates and regi
 
 The main dsh renderer receives a narrow desktop bridge for MCP Marketplace search, list, add, and remove operations plus account-summary reads. Those actions power the in-product Settings pages; the separate Desktop-management renderer retains its own structured package and update operations. Neither renderer receives filesystem access, raw Electron IPC, a shell, arbitrary pnpm arguments, or an arbitrary process-launch capability.
 
+Desktop also enables the session-local Schedule services in its private overlay. The left sidebar adds Scheduled tasks below New Session and above the Workspace browser; its task center reads only the existing Session-list Schedule projection, filters and searches active records, and returns a selected row to its original conversation. It does not create a global scheduler, wake cold Sessions, or run a task while the application is closed.
+
 Desktop also composes the published experimental Agent Teams layers after the base and Web layers. A conversation can use its existing delegation tools to create a named team; the header Team panel shows the durable roster, member state, shared task board, and teammate conversations. Members share the selected workspace, so task write scopes are warnings rather than locks and the lead remains responsible for the final review.
 
 Electron chooses typed English or Chinese shell copy from its application locale and falls back to English. Menus, native dialogs, and the plugin-management renderer use the same locale payload; the repository Client UI i18n gate checks these desktop sources.

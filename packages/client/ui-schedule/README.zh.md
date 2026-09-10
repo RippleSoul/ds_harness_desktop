@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包在 Web 会话头部渲染当前会话活动 Schedule 提醒的只读目录。它读取完整的 `schedule` projection，不发 RPC，也不执行 mutation。浏览器派生状态、本地时间、相对时间与排序，不把这些呈现值加入持久状态。随附 Web bundle 默认禁用该插件，只有显式 Schedule overlay 才会同时启用 Host Schedule 服务与此客户端 row。
+本包在 Web 会话头部渲染当前会话活动 Schedule 提醒的只读目录。它读取完整的 `schedule` projection，不发 RPC，也不执行 mutation。浏览器派生状态、本地时间、相对时间与排序，不把这些呈现值加入持久状态。随附 Web bundle 默认禁用该插件，只有显式 Schedule overlay 才会同时启用 Host Schedule 服务与此客户端 row。Desktop 会在其私有 overlay 中启用相同服务，并新增根级任务中心，汇总已在加载会话列表中的活动记录。
 
 ## 目录
 
@@ -33,6 +33,10 @@ dsh web --patch apps/cli/config/examples/schedule/cordis.yml
 
 随附 Web graph 已通过 disabled 的 `ui-schedule` row 解析 `@deepseek-ai/dsh-client-ui-schedule`；overlay 会把该 row 与 `@deepseek-ai/dsh-schedule` 一起启用。只有会话已成功打开且 projection 至少包含一条活动记录时，触发器才会出现。打开目录后，逾期行在前，未来行再按目标时间排序；完全并列时保留 projection 的创建顺序。
 
+### Desktop 任务中心
+
+Desktop 通过私有 overlay 启用 `time-context`、`schedule` 与 `ui-schedule`。侧栏将“定时任务”放在“新会话”下方、“工作区”浏览区上方。它的根级页面汇总 Session Controller 已持有的普通会话活动记录，先列出逾期任务，提供“全部”“等待中”“已逾期”筛选和文字搜索，选择任务会打开其所属会话。它没有重复的任务存储、RPC、mutation 或后台扫描；创建与取消提醒仍由原始会话中的 Schedule 工具完成。
+
 ### 阅读和关闭目录
 
 每一行显示可完整换行的提示词、独立的「等待中」或「已逾期」状态、本地化的「单次」或重复间隔可整除的最大完整单位、浏览器本地目标时间，以及按浏览器时钟派生的相对时间。间隔绝不舍入，三项元数据会按行换行，不会裁剪合法的大数值。通过 portal 挂到 body 的弹层目标宽度为 336px；空间足够时与触发按钮左边缘对齐，触发器靠近视口右侧时向左避让并保留 16px 视口边距，最大宽度为视口宽度减 32px。弹层会在需要时纵向滚动，且不显示 Schedule id、原始 UTC 值、详情或操作控件。
@@ -55,6 +59,8 @@ dsh web --patch apps/cli/config/examples/schedule/cordis.yml
 |---|---|
 | [`src/client/index.ts`](src/client/index.ts) | 浏览器入口：注册 locale 并贡献会话头部 slot |
 | [`src/client/ScheduleCatalogAction.tsx`](src/client/ScheduleCatalogAction.tsx) | 可见性、排序、格式化、弹层与键盘行为 |
+| [`src/client/ScheduleCenterPanel.tsx`](src/client/ScheduleCenterPanel.tsx) | Desktop 任务中心的筛选、排序和返回所属会话动作 |
+| [`src/client/ScheduleCenterPanel.module.css`](src/client/ScheduleCenterPanel.module.css) | 任务中心布局与语义 token 呈现 |
 | [`src/client/locales.ts`](src/client/locales.ts) | 中英文目录文案 |
 | [`src/index.ts`](src/index.ts) | 空的 Host apply，使 Loader 可以寻址该可选浏览器功能 |
 | — | 不发布运行时不变量伴生入口；这个只读客户端目录不拥有可变的跨插件状态。 |
@@ -97,6 +103,7 @@ dsh web --patch apps/cli/config/examples/schedule/cordis.yml
 - **浏览器派生时间**——本地时间与相对时间标签使用查看方浏览器当前的 locale、时区与时钟。它们是呈现值，不是持久 Schedule 事实。
 - **只读界面**——创建与删除提醒仍由 Schedule 工具负责；目录没有 mutation、Retry、acknowledgement、Toast 或交付回执语义。
 - **要求会话打开成功**——打开失败时，即使存在暂定缓存值也会隐藏，因为严格会话回放仍是权威。
+- **Desktop 不是后台调度器**——任务中心只汇总 Desktop 已加载的会话列表记录。它不会唤醒休眠会话、在应用关闭后执行工作，也不会发送操作系统通知。
 
 <a id="dev-note"></a>
 ### 开发备注

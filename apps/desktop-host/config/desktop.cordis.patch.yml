@@ -26,6 +26,18 @@
     - credentials
   config: {}
 
+# Desktop keeps reminders on this computer. The schedule record remains in its
+# original conversation; the client task center only summarizes active records.
+- insert:
+    - id: time-context
+      name: '@deepseek-ai/dsh-time-context'
+
+    - id: schedule
+      name: '@deepseek-ai/dsh-schedule'
+
+- id: ui-schedule
+  disabled: false
+
 - insert:
     - id: directory-picker-native
       name: '@deepseek-ai/dsh-host-directory-picker-native'

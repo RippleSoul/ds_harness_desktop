@@ -1,0 +1,4 @@
+# Bilingual-pair consistency record (docs/i18n/README.md). Hashes are recorded after
+# the paired Markdown files are finalized.
+2026-09-10-desktop-schedule-center.md: f81b0c4f1a51df39c9703c72722c6b26a887a0e4
+2026-09-10-desktop-schedule-center.zh.md: 8df88ba0f71bf54e05f82076e034cfb15f4d3b34
