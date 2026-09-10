@@ -1,0 +1,4 @@
+# Bilingual-pair consistency record (docs/i18n/README.md). Hashes are recorded after
+# the paired Markdown files are finalized.
+2026-09-10-plugin-inventory-localized-purpose.md: b91eca60f85ee153aac8a5ac56561e72bdf644fb
+2026-09-10-plugin-inventory-localized-purpose.zh.md: 49389ce1cb8002b4e87970be174388879051af76

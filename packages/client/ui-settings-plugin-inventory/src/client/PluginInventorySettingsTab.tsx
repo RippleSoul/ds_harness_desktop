@@ -63,11 +63,6 @@ function moduleShortName(moduleName: string): string {
     .replace(/^dsh-(?:host-|client-)?/, '')
 }
 
-/** Display an entry identity without the composition-only `include:` marker. */
-function entrySubtitle(entryId: string): string {
-  return entryId.replace(/^include:/, '')
-}
-
 /** Whether one row's module name or entry id matches the catalog query. */
 function matches(moduleName: string, entryId: string | null, normalizedQuery: string): boolean {
   if (normalizedQuery.length === 0) return true
@@ -89,10 +84,11 @@ function presetLabel(preset: AgentPresetGroup, t: Translate, presetName: (preset
 }
 
 /** One expandable plugin card; the caller owns the trailing status content. */
-function PluginCard({ rowKey, moduleName, entryId, trailing, ariaLabel, failed, expanded, onToggle, children }: {
+function PluginCard({ rowKey, moduleName, entryId, subtitle, trailing, ariaLabel, failed, expanded, onToggle, children }: {
   readonly rowKey: string
   readonly moduleName: string
   readonly entryId: string | null
+  readonly subtitle: string
   readonly trailing: ReactNode
   readonly ariaLabel: string
   readonly failed: boolean
@@ -125,7 +121,7 @@ function PluginCard({ rowKey, moduleName, entryId, trailing, ariaLabel, failed, 
             <IconChevronDownOutline14 className={css.chevron} size={12} aria-hidden="true" />
           </span>
         </span>
-        {entryId === null ? null : <code className={css.cardIdentity} title={entryId}>{entrySubtitle(entryId)}</code>}
+        <span className={css.cardIdentity} title={entryId ?? undefined}>{subtitle}</span>
       </button>
       {open ? <div className={css.cardDetails} id={detailId}>{children}</div> : null}
     </li>
@@ -190,6 +186,54 @@ const TAG_TONES = {
   preset: 'info',
   failed: 'danger',
 } as const satisfies Record<EnablementKind, TagTone>
+
+const MODULE_BRIEF_KEYS = {
+  persona: 'brief.persona',
+  'agent-instructions': 'brief.agentInstructions',
+  'command-feedback': 'brief.commandFeedback',
+  goal: 'brief.goal',
+  'goal-round-driver': 'brief.goalRoundDriver',
+  'command-goal': 'brief.commandGoal',
+  'plan-mode': 'brief.planMode',
+  'token-meter': 'brief.tokenMeter',
+  'compaction-basic': 'brief.compaction',
+  'command-compact': 'brief.commandCompact',
+  subagent: 'brief.subagent',
+  'subagent-spawn-in-process': 'brief.subagentSpawn',
+  'subagent-fork-in-process': 'brief.subagentFork',
+  'tool-subagent-control': 'brief.subagentControl',
+  'tool-subagent-list-agents': 'brief.subagentList',
+  'tool-subagent': 'brief.subagentTool',
+  'tool-subagent-fork': 'brief.subagentForkTool',
+  'workflow-worker-thread': 'brief.workflowWorker',
+  'tool-workflow': 'brief.workflowTool',
+  'timeout-policy': 'brief.timeout',
+  'spill-local': 'brief.spill',
+  'spill-policy': 'brief.spillPolicy',
+  'tool-bash': 'brief.bash',
+  'tool-pwsh': 'brief.pwsh',
+  'tool-fs': 'brief.files',
+  'tool-fs-search': 'brief.fileSearch',
+  'tool-jobs': 'brief.jobs',
+  'skill-filesystem': 'brief.localSkills',
+  'tool-skill': 'brief.skills',
+  'tool-ask-user': 'brief.askUser',
+  'tool-todo': 'brief.todo',
+  'tool-web': 'brief.web',
+  'tool-present': 'brief.present',
+} as const satisfies Record<string, PluginInventoryLocaleKey>
+
+/** Compact Chinese/English product label for one internal module identifier. */
+function moduleBrief(moduleName: string, t: Translate): string {
+  const name = moduleShortName(moduleName)
+  const key = MODULE_BRIEF_KEYS[name]
+  if (key !== undefined) return t(key)
+  if (name.startsWith('tool-')) return t('brief.tool')
+  if (name.startsWith('command-')) return t('brief.command')
+  if (name.startsWith('ui-')) return t('brief.interface')
+  if (name.startsWith('client-')) return t('brief.client')
+  return t('brief.system')
+}
 
 /** Enablement tag; `kind` selects the palette. */
 function StateTag({ kind, label }: { readonly kind: EnablementKind; readonly label: string }): ReactNode {
@@ -285,6 +329,7 @@ export function PluginInventorySettingsTab({ list, presetName, t }: PluginInvent
         rowKey={key}
         moduleName={row.moduleName}
         entryId={row.entryId}
+        subtitle={moduleBrief(row.moduleName, t)}
         failed={failed}
         expanded={expanded}
         onToggle={toggleRow}
@@ -331,6 +376,7 @@ export function PluginInventorySettingsTab({ list, presetName, t }: PluginInvent
         rowKey={key}
         moduleName={entry.moduleName}
         entryId={entry.entryId}
+        subtitle={moduleBrief(entry.moduleName, t)}
         failed={failed}
         expanded={expanded}
         onToggle={toggleRow}
