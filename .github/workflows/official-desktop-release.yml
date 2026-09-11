@@ -1,0 +1,99 @@
+name: Official-source personal desktop release
+
+on:
+  push:
+    branches: [official-desktop-fixes]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: official-desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Verify desktop fixes
+        run: pnpm exec vitest run apps/desktop/tests/main-startup.spec.ts apps/desktop/tests/macos-signature.spec.ts apps/desktop/tests/package-target.spec.ts
+
+      - name: Build unsigned Apple Silicon installer
+        env:
+          DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
+        run: pnpm run package:desktop:mac:arm64:unsigned
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          if-no-files-found: error
+          path: apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/*.dmg
+
+  publish-macos:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-installer
+          path: release-assets
+
+      - name: Replace latest macOS installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+          gh release create latest release-assets/*.dmg --repo "$GITHUB_REPOSITORY" --title "DeepSeek Harness latest" --prerelease --latest=false
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build unsigned Windows installer
+        env:
+          DSH_DESKTOP_APP_ID: io.github.ripplesoul.dshdesktop
+        run: pnpm run package:desktop:win:x64:unsigned
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          if-no-files-found: error
+          path: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+
+  publish-windows:
+    needs: [publish-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release-assets
+
+      - name: Add Windows installer to latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload latest release-assets/*.exe --repo "$GITHUB_REPOSITORY" --clobber
